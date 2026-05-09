@@ -102,6 +102,19 @@
             opacity: 0.92;
         }
 
+        /* 新增链接样式（可选） */
+        .link-btn {
+            color: #ff9a44;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px dashed #ff9a44;
+        }
+
+        .link-btn:hover {
+            color: #f37c20;
+            border-bottom: 1px solid #f37c20;
+        }
+
         /* 响应式适配补充 */
         @media (max-width: 600px) {
             header h1 {
@@ -130,15 +143,19 @@
         <h1>Heartopia 攻略站</h1>
         <p>新手教程｜角色排行｜兑换码｜玩法技巧全指南</p>
         <p style="font-size: 14px; opacity: 0.8; margin-top: 6px;">最后更新：2025年1月10日</p>
+        <!-- 头部添加官方网站链接 -->
+        <a href="https://www.heartopia-game.com" target="_blank" class="btn" style="margin-top: 10px;">前往游戏官网</a>
     </header>
 
     <!-- 锚点导航 -->
     <div style="text-align: center; margin-bottom: 20px;">
         <a href="#newbie" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">新手入门</a>
-        <a href="#event.html" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">兑换码</a>
-        <a href="role.html" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">角色排行</a>
-        <a href="task.html" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">玩法技巧</a>
+        <a href="#codes" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">兑换码</a>
+        <a href="#ranking" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">角色排行</a>
+        <a href="#skills" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">玩法技巧</a>
         <a href="#faq" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">常见问题</a>
+        <!-- 导航栏添加社区链接 -->
+        <a href="https://forum.heartopia-game.com" target="_blank" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">玩家社区</a>
     </div>
 
     <div class="container">
@@ -152,6 +169,10 @@
                 <li>优先培养高星级主力角色，不要平均升级</li>
                 <li>新手教程不要跳过，隐藏大量免费奖励</li>
             </ul>
+            <!-- 新手入门添加攻略视频链接 -->
+            <p>观看详细新手教学视频：<a href="https://youtu.be/xxxxxxx" target="_blank" class="link-btn">Heartopia新手快速上手教程</a></p>
+            <!-- 添加下载游戏按钮链接 -->
+            <a href="https://download.heartopia-game.com" target="_blank" class="btn">下载游戏客户端</a>
         </div>
 
         <!-- 最新兑换码 -->
@@ -161,6 +182,8 @@
             <div class="code">LOVEHEART01</div>
             <div class="code">GIFTOPIA888</div>
             <p style="margin-top:12px;">使用方式：游戏设置 → 礼包兑换码 → 输入领取（点击兑换码可一键复制）</p>
+            <!-- 兑换码添加更多兑换码链接 -->
+            <p>获取更多实时更新兑换码：<a href="https://codes.heartopia-game.com" target="_blank" class="link-btn">兑换码专属页面</a></p>
             
             <h3 style="color: #994c2e; font-size: 18px; margin-top: 20px; margin-bottom: 10px;">🚫 已失效兑换码</h3>
             <div class="code" style="background: linear-gradient(135deg, #f8e8e0, #f5d0c0); color: #994c2e; opacity: 0.8;">OLDHEART123</div>
@@ -175,6 +198,8 @@
             <p><strong>S 级 强势好用：</strong> 值得长期培养，性价比极高</p>
             <p><strong>A 级 平民优选：</strong> 新手前期过渡首选</p>
             <p><strong>B 级 前期过渡：</strong> 仅开荒临时使用</p>
+            <!-- 角色排行添加详细角色攻略链接 -->
+            <p>查看角色详细技能与养成攻略：<a href="https://characters.heartopia-game.com" target="_blank" class="link-btn">全角色图鉴与攻略</a></p>
         </div>
 
         <!-- 玩法技巧 -->
@@ -186,6 +211,8 @@
                 <li>加入社团，领取专属社团额外奖励</li>
                 <li>简单关卡开启自动战斗，节省时间</li>
             </ul>
+            <!-- 玩法技巧添加高阶攻略链接 -->
+            <p>进阶玩家必看：<a href="https://guide.heartopia-game.com/advanced" target="_blank" class="link-btn">高阶玩法与阵容搭配</a></p>
         </div>
 
         <!-- 常见问题FAQ -->
@@ -194,6 +221,16 @@
             <p><strong>Q：怎么快速获取大量钻石？</strong><br>A：完成每日任务、参与限时活动、使用兑换码。</p>
             <p><strong>Q：游戏要不要氪金？</strong><br>A：零氪也能正常通关所有剧情，氪金仅抽限定角色。</p>
             <p><strong>Q：新角色怎么解锁？</strong><br>A：许愿池抽取、主线剧情进度奖励获取。</p>
+            <!-- FAQ添加客服链接 -->
+            <p>还有其他问题？<a href="https://support.heartopia-game.com" target="_blank" class="link-btn">联系游戏客服</a></p>
+        </div>
+
+        <!-- 底部添加友情链接区域 -->
+        <div class="card" style="text-align: center; padding: 16px;">
+            <h2 style="font-size: 20px; margin-bottom: 16px;">友情链接</h2>
+            <a href="https://www.game-review.com/heartopia" target="_blank" style="margin: 0 8px; color: #e67e22; text-decoration: none;">游戏评测</a>
+            <a href="https://wiki.heartopia-game.com" target="_blank" style="margin: 0 8px; color: #e67e22; text-decoration: none;">游戏维基</a>
+            <a href="https://social.heartopia-game.com" target="_blank" style="margin: 0 8px; color: #e67e22; text-decoration: none;">官方社交账号</a>
         </div>
     </div>
 
