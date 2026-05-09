@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heartopia Guide | Official Orange Style</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #fff9f0;
+            color: #5c4b3e;
+            padding: 16px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #ffb766, #ff9a44);
+            color: #fff;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(255, 154, 68, 0.3);
+        }
+
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #ffffff;
+            padding: 24px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px rgba(255, 183, 102, 0.25);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(255, 183, 102, 0.35);
+        }
+
+        h2 {
+            color: #e67e22;
+            margin-bottom: 14px;
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        p, li {
+            line-height: 1.7;
+            margin-bottom: 10px;
+            font-size: 15px;
+            color: #6d5b4f;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        .code {
+            background: linear-gradient(135deg, #fff1e0, #ffd9b3);
+            color: #d35400;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 6px 4px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff9a44, #f37c20);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 14px;
+            text-decoration: none;
+            margin-top: 12px;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(255, 154, 68, 0.35);
+        }
+
+        .btn:hover {
+            opacity: 0.92;
+        }
+
+        /* 响应式适配补充 */
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 24px;
+            }
+            .card {
+                padding: 18px;
+            }
+            h2 {
+                font-size: 20px;
+            }
+            .code {
+                display: block;
+                margin: 8px 0;
+                text-align: center;
+            }
+            .btn {
+                display: block;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Heartopia 攻略站</h1>
+        <p>新手教程｜角色排行｜兑换码｜玩法技巧全指南</p>
+        <p style="font-size: 14px; opacity: 0.8; margin-top: 6px;">最后更新：2025年1月10日</p>
+    </header>
+
+    <!-- 锚点导航 -->
+    <div style="text-align: center; margin-bottom: 20px;">
+        <a href="#newbie" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">新手入门</a>
+        <a href="#codes" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">兑换码</a>
+        <a href="#ranking" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">角色排行</a>
+        <a href="#skills" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">玩法技巧</a>
+        <a href="#faq" style="margin: 0 10px; color: #e67e22; text-decoration: none; font-weight: 500;">常见问题</a>
+    </div>
+
+    <div class="container">
+        <!-- 新手入门攻略 -->
+        <div class="card" id="newbie">
+            <h2>🎀 新手入门指南</h2>
+            <ul>
+                <li>优先推进主线剧情，解锁全部玩法系统</li>
+                <li>珍惜钻石资源，留给限定角色池抽取</li>
+                <li>每日任务必做，稳定获取海量资源</li>
+                <li>优先培养高星级主力角色，不要平均升级</li>
+                <li>新手教程不要跳过，隐藏大量免费奖励</li>
+            </ul>
+        </div>
+
+        <!-- 最新兑换码 -->
+        <div class="card" id="codes">
+            <h2>🎁 最新可用兑换码</h2>
+            <div class="code">HEARTOPIA2025</div>
+            <div class="code">LOVEHEART01</div>
+            <div class="code">GIFTOPIA888</div>
+            <p style="margin-top:12px;">使用方式：游戏设置 → 礼包兑换码 → 输入领取（点击兑换码可一键复制）</p>
+            
+            <h3 style="color: #994c2e; font-size: 18px; margin-top: 20px; margin-bottom: 10px;">🚫 已失效兑换码</h3>
+            <div class="code" style="background: linear-gradient(135deg, #f8e8e0, #f5d0c0); color: #994c2e; opacity: 0.8;">OLDHEART123</div>
+            <div class="code" style="background: linear-gradient(135deg, #f8e8e0, #f5d0c0); color: #994c2e; opacity: 0.8;">EXPIRED666</div>
+            <p style="margin-top:12px; color: #994c2e; font-size: 14px;">失效兑换码无法领取，请以最新可用码为准</p>
+        </div>
+
+        <!-- 角色强度排行 -->
+        <div class="card" id="ranking">
+            <h2>⭐ 角色强度梯度榜</h2>
+            <p><strong>SS 级 顶尖人权：</strong> 剧情、活动、通用开荒全能</p>
+            <p><strong>S 级 强势好用：</strong> 值得长期培养，性价比极高</p>
+            <p><strong>A 级 平民优选：</strong> 新手前期过渡首选</p>
+            <p><strong>B 级 前期过渡：</strong> 仅开荒临时使用</p>
+        </div>
+
+        <!-- 玩法技巧 -->
+        <div class="card" id="skills">
+            <h2>💡 进阶玩法小技巧</h2>
+            <ul>
+                <li>每日免费福利记得准时领取</li>
+                <li>角色技能同步升级，整体战力提升更大</li>
+                <li>加入社团，领取专属社团额外奖励</li>
+                <li>简单关卡开启自动战斗，节省时间</li>
+            </ul>
+        </div>
+
+        <!-- 常见问题FAQ -->
+        <div class="card" id="faq">
+            <h2>❓ 常见问题 FAQ</h2>
+            <p><strong>Q：怎么快速获取大量钻石？</strong><br>A：完成每日任务、参与限时活动、使用兑换码。</p>
+            <p><strong>Q：游戏要不要氪金？</strong><br>A：零氪也能正常通关所有剧情，氪金仅抽限定角色。</p>
+            <p><strong>Q：新角色怎么解锁？</strong><br>A：许愿池抽取、主线剧情进度奖励获取。</p>
+        </div>
+    </div>
+
+    <!-- 兑换码复制功能 -->
+    <script>
+        const codeElements = document.querySelectorAll('.code');
+        codeElements.forEach(code => {
+            code.style.cursor = 'pointer';
+            code.addEventListener('click', () => {
+                navigator.clipboard.writeText(code.textContent)
+                    .then(() => {
+                        const originalText = code.textContent;
+                        code.textContent = '✅ 已复制！';
+                        setTimeout(() => {
+                            code.textContent = originalText;
+                        }, 1500);
+                    })
+                    .catch(err => {
+                        alert('复制失败，请手动复制：' + code.textContent);
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
