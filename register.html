@@ -15,18 +15,23 @@
   <p class="text-center mt-4">已有账号？<a href="login.html" class="text-green-600">去登录</a></p>
 </div>
 <script>
-const API_BASE = "https://ghibli-ai-api.onrender.com";
+const API_BASE = "https://ai-api-fxbs.onrender.com";
 document.getElementById('regBtn').onclick = async ()=>{
-  const username = document.getElementById('username').value;
-  const pwd = document.getElementById('pwd').value;
-  const res = await fetch(`${API_BASE}/api/register`,{
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({username,pwd})
-  });
-  const data = await res.json();
-  if(data.code!==0){ alert(data.msg); return; }
-  alert('注册成功！赠送10积分');
-  location.href='login.html';
+  const username = document.getElementById('username').value.trim();
+  const pwd = document.getElementById('pwd').value.trim();
+  if(!username || !pwd){ alert('请填写完整'); return; }
+  try{
+    const res = await fetch(`${API_BASE}/api/register`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username,pwd})
+    });
+    const data = await res.json();
+    if(data.code !==0){ alert(data.msg); return; }
+    alert('注册成功！赠送10积分');
+    location.href='login.html';
+  }catch(e){
+    alert('网络错误，请重试');
+  }
 };
 </script>
 </body>
