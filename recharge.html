@@ -2,37 +2,67 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>充值</title>
+  <title>积分充值</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="p-6">
-  <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg">
-    <h2 class="text-xl font-bold mb-4">充值（1元=1积分）</h2>
-    <input id="amount" type="number" placeholder="金额" class="border p-2 w-full mb-3">
-    <button id="payBtn" class="bg-green-600 text-white w-full p-2">提交充值</button>
+<body class="max-w-md mx-auto p-4">
+  <h1 class="text-xl font-bold mb-4">积分充值</h1>
 
-    <!-- 返回首页 -->
-    <a href="index.html" class="block text-center mt-4 text-blue-600">返回首页</a>
-  </div>
+  <!-- 返回按钮 -->
+  <a href="index.html" class="inline-block mb-4 text-green-600">← 返回首页</a>
+
+  <select id="payType" class="border p-2 w-full mb-4">
+    <option value="1">微信支付</option>
+    <option value="2">支付宝支付</option>
+  </select>
+
+  <button onclick="pay(10)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">10元 → 10积分</button>
+  <button onclick="pay(50)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">50元 → 50积分</button>
+  <button onclick="pay(100)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">100元 → 100积分</button>
+
+  <div id="qrcode" class="mt-4 text-center"></div>
+  <div id="status" class="mt-2 text-sm text-gray-600"></div>
+
   <script>
     const user = JSON.parse(localStorage.getItem("aiUser"));
-    if (!user) location.href = "login.html";
+    const API = "https://wp568-github-io.onrender.com";
+    let currentOrderId = "";
+    let timer = null;
 
-    document.getElementById("payBtn").onclick = async () => {
-      const amount = +document.getElementById("amount").value;
-      if (!amount || amount < 1) return alert("金额错误");
-
-      const res = await fetch("/api/recharge", {
+    async function checkStatus() {
+      const res = await fetch(API + "/api/check-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: user.username, amount })
+        body: JSON.stringify({ orderId: currentOrderId })
       });
       const data = await res.json();
-      if (data.ok) {
-        alert("充值提交成功，等待管理员确认到账后自动加积分");
-        location.href = "index.html"; // 提交后直接回首页
+      if (data.status === "success") {
+        status.innerHTML = "<span class='text-green-600'>✅ 支付成功！积分已到账</span>";
+        clearInterval(timer);
+      } else {
+        status.innerHTML = "<span class='text-orange-500'>⌛ 等待付款中...</span>";
       }
-    };
+    }
+
+    async function pay(points) {
+      const t = document.getElementById("payType").value;
+      const res = await fetch(API + "/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user.username, points, payType: parseInt(t) })
+      });
+      const data = await res.json();
+      if (!data.ok) return alert("创建订单失败");
+
+      currentOrderId = data.orderId;
+      if (t == 1) {
+        qrcode.innerHTML = `<h3>微信支付</h3><img src="/qrcode-wechat.png" width="300"><p>订单号：${currentOrderId}</p>`;
+      } else {
+        qrcode.innerHTML = `<h3>支付宝支付</h3><img src="/qrcode-alipay.png" width="300"><p>订单号：${currentOrderId}</p>`;
+      }
+      clearInterval(timer);
+      timer = setInterval(checkStatus, 3000);
+    }
   </script>
 </body>
 </html>
