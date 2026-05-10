@@ -2,125 +2,113 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
-
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://wp568.github.io",
-    "https://zhongkui.it.com"
-  ],
-  credentials: true
-}));
-
+app.use(cors({ origin: ["https://zhongkui.it.com"], credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
 
-const dbDir = path.join(__dirname, 'db');
-const userDbPath = path.join(dbDir, 'users.json');
-const logDbPath = path.join(dbDir, 'generate_log.json');
+const db = __dirname + "/db";
+if (!fs.existsSync(db)) fs.mkdirSync(db);
 
-if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir);
-if (!fs.existsSync(userDbPath)) fs.writeFileSync(userDbPath, JSON.stringify([]));
-if (!fs.existsSync(logDbPath)) fs.writeFileSync(logDbPath, JSON.stringify([]));
+const file = (n) => path.join(db, n);
+const j = (f) => fs.existsSync(f) ? JSON.parse(fs.readFileSync(f)) : [];
+const w = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2));
 
-const getUsers = () => JSON.parse(fs.readFileSync(userDbPath));
-const saveUsers = (data) => fs.writeFileSync(userDbPath, JSON.stringify(data, null, 2));
-const getLogs = () => JSON.parse(fs.readFileSync(logDbPath));
-const saveLogs = (data) => fs.writeFileSync(logDbPath, JSON.stringify(data, null, 2));
+// 数据文件
+const USERS = file("users.json");
+const GEN_LOG = file("gen_log.json");
+const CHARGE_LOG = file("charge_log.json");
+const PV = file("pv.json");
+
+// 浏览次数
+app.get("/api/pv", (req, res) => {
+  let c = j(PV);
+  c = c.length ? c[0].count + 1 : 1;
+  w(PV, [{ count: c }]);
+  res.send("ok");
+});
+
+// 后台所有数据
+app.get("/api/admin/all", (req, res) => {
+  const users = j(USERS);
+  const gen = j(GEN_LOG);
+  const charge = j(CHARGE_LOG);
+  const pv = j(PV).length ? j(PV)[0].count : 0;
+
+  const totalGen = gen.length;
+  const successGen = gen.filter(g => g.success).length;
+  const failGen = totalGen - successGen;
+  const genRate = totalGen === 0 ? "0%" : (successGen / totalGen * 100).toFixed(1) + "%";
+
+  res.json({
+    pv,
+    userCount: users.length,
+    totalGen,
+    successGen,
+    failGen,
+    genRate,
+    genLogs: gen.slice(-30),
+    chargeLogs: charge.slice(-30)
+  });
+});
 
 // 注册
-app.post('/api/register', (req, res) => {
+app.post("/api/register", (req, res) => {
   const { username, pwd } = req.body;
-  let users = getUsers();
-  if (users.find(u => u.username === username)) {
-    return res.json({ code: -1, msg: '用户名已存在' });
-  }
-  users.push({
-    username,
-    pwd,
-    score: 10,
-    isAdmin: username === 'admin',
-    regTime: new Date().toLocaleString()
-  });
-  saveUsers(users);
-  res.json({ code: 0, msg: '注册成功', score: 10, isAdmin: username === 'admin' });
+  let u = j(USERS);
+  if (u.find(x => x.username === username)) return res.json({ code: -1 });
+  u.push({ username, pwd, score: 10, isAdmin: username === "admin" });
+  w(USERS, u);
+  res.json({ code: 0 });
 });
 
 // 登录
-app.post('/api/login', (req, res) => {
+app.post("/api/login", (req, res) => {
   const { username, pwd } = req.body;
-  const users = getUsers();
-  const user = users.find(u => u.username === username && u.pwd === pwd);
-  if (!user) return res.json({ code: -1, msg: '账号密码错误' });
-  res.json({
-    code: 0,
-    msg: '登录成功',
-    username: user.username,
-    score: user.score,
-    isAdmin: user.isAdmin
-  });
+  const u = j(USERS).find(x => x.username === username && x.pwd === pwd);
+  res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// 扣积分
-app.post('/api/deduct-score', (req, res) => {
-  const { username, style, success } = req.body;
-  let users = getUsers();
-  let logs = getLogs();
-  const user = users.find(u => u.username === username);
-  if (!user) return res.json({ code: -1, msg: '用户不存在' });
-  if (user.score < 1) return res.json({ code: -1, msg: '积分不足，请充值' });
+// 生成图片（记录日志）
+app.post("/api/generate", (req, res) => {
+  const { username, style } = req.body;
+  let u = j(USERS);
+  let user = u.find(x => x.username === username);
+  if (!user || user.score < 1) return res.json({ ok: false });
 
   user.score -= 1;
-  saveUsers(users);
-  logs.push({ username, style, success, time: new Date().toLocaleString() });
-  saveLogs(logs);
+  w(USERS, u);
 
-  res.json({ code: 0, msg: '生成成功', score: user.score });
+  let gl = j(GEN_LOG);
+  gl.push({ username, style, success: true, time: new Date().toLocaleString() });
+  w(GEN_LOG, gl);
+
+  res.json({ ok: true, score: user.score });
 });
 
-// 充值加积分（用户端模拟）
-app.post('/api/recharge', (req, res) => {
-  const { username, num } = req.body;
-  let users = getUsers();
-  const user = users.find(u => u.username === username);
-  if (!user) return res.json({ code: -1, msg: '用户不存在' });
-  user.score += Number(num);
-  saveUsers(users);
-  res.json({ code: 0, msg: '充值成功', score: user.score });
-});
-
-// 后台统计
-app.get('/api/admin-stats', (req, res) => {
-  const users = getUsers();
-  const logs = getLogs();
-  const total = logs.length;
-  const successNum = logs.filter(l => l.success).length;
-  const failNum = total - successNum;
-  const successRate = total === 0 ? '0%' : (successNum / total * 100).toFixed(2) + '%';
-
-  res.json({
-    userCount: users.length,
-    totalGenerate: total,
-    successNum,
-    failNum,
-    successRate
+// 提交充值记录
+app.post("/api/charge", (req, res) => {
+  const { username, points, payType } = req.body;
+  let cl = j(CHARGE_LOG);
+  cl.push({
+    username, points, payType,
+    time: new Date().toLocaleString()
   });
+  w(CHARGE_LOG, cl);
+  res.json({ ok: true });
 });
 
-// 【关键补上】管理员手动给用户加积分接口
-app.post('/api/admin/addscore', (req, res) => {
-  const { username, num } = req.body;
-  let users = getUsers();
-  let u = users.find(x => x.username === username);
-  if(!u) return res.json({ok:false,msg:"用户不存在"});
-  u.score += num;
-  saveUsers(users);
-  res.json({ok:true, score:u.score});
+// 管理员加积分
+app.post("/api/admin/add", (req, res) => {
+  const { username, points } = req.body;
+  let u = j(USERS);
+  let user = u.find(x => x.username === username);
+  if (!user) return res.json({ ok: false, msg: "用户不存在" });
+  user.score += points;
+  w(USERS, u);
+  res.json({ ok: true, score: user.score });
 });
 
-app.listen(PORT, () => {
-  console.log(`服务运行中: ${PORT}`);
-});
+app.listen(PORT, () => console.log("启动成功"));
