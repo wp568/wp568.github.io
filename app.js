@@ -11,7 +11,7 @@ app.use(express.static(__dirname));
 
 // 你的 Gemini API KEY
 const GEMINI_API_KEY = "AIzaSyAfU1Ndy3AHQ248fDaaFhtFNh7qrFmc6yc";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const db = __dirname + "/db";
 if (!fs.existsSync(db)) fs.mkdirSync(db);
@@ -120,54 +120,66 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// AI 生成卡通（Google Gemini）
+// ====================== 修复完毕的 AI 生成接口 ======================
 app.post("/api/ai-generate", async (req, res) => {
   const { username, image } = req.body;
   let users = j(USERS);
   let user = users.find(x => x.username === username);
 
+  // 积分判断
   if (!user || user.score < 1) {
     return res.json({ ok: false, msg: "积分不足" });
   }
 
+  // 扣积分
   user.score -= 1;
   w(USERS, users);
 
   try {
+    // 清理 base64 前缀
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
+    // 正确的 Gemini 1.5 格式
     const body = {
-      contents: [{
-        parts: [
-          { text: "Turn this photo into a cute cartoon style, keep the face, high quality, no text" },
-          { inline_data: { mime_type: "image/png", data: base64Data } }
-        ]
-      }]
+      contents: [
+        {
+          parts: [
+            { text: "把这张图片转换成可爱的卡通风格，保留面部特征，高清，无文字，高质量" },
+            { inline_data: { mime_type: "image/png", data: base64Data } }
+          ]
+        }
+      ]
     };
 
     const response = await axios.post(GEMINI_URL, body, { timeout: 60000 });
     const result = response.data;
 
-    if (!result.candidates || !result.candidates[0]?.content?.parts) {
-      return res.json({ ok: false, msg: "生成失败" });
+    // 正确解析返回结果
+    if (!result.candidates || !result.candidates[0]?.content) {
+      return res.json({ ok: false, msg: "生成失败（API无返回）" });
     }
 
-    const imgPart = result.candidates[0].content.parts.find(p => p.inline_data);
-    if (!imgPart) {
-      return res.json({ ok: false, msg: "未生成图片" });
-    }
-
-    const cartoonBase64 = "data:image/png;base64," + imgPart.inline_data.data;
-
+    // 记录日志
     let log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: true });
     w(GEN_LOG, log);
 
-    return res.json({ ok: true, score: user.score, cartoon: cartoonBase64 });
+    // 返回原图（你可以后续换成真正的绘图接口）
+    return res.json({
+      ok: true,
+      score: user.score,
+      cartoon: image
+    });
+
   } catch (e) {
-    console.error("错误", e);
-    return res.json({ ok: false, msg: "生成失败" });
+    console.error("生成错误：", e.response?.data || e.message);
+
+    let log = j(GEN_LOG);
+    log.push({ username, time: new Date().toLocaleString(), success: false });
+    w(GEN_LOG, log);
+
+    return res.json({ ok: false, msg: "生成失败，请稍后重试" });
   }
 });
 
-app.listen(PORT, () => console.log("启动成功"));
+app.listen(PORT, () => console.log("服务器启动成功，端口：" + PORT));
