@@ -1,47 +1,52 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>管理后台</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理员 - 手动充值</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; text-align: center; }
+  input { padding: 10px; width: 80%; margin: 10px 0; font-size: 16px; }
+  button { padding: 10px 20px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+  #result { margin-top: 20px; font-size: 18px; }
+</style>
 </head>
-<body class="bg-gray-100 p-6">
-<div class="max-w-5xl mx-auto bg-white rounded-xl p-6 shadow-lg">
-  <h2 class="text-2xl font-bold mb-6">网站数据统计后台</h2>
-  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">总用户数</p><p id="userCount" class="text-xl font-bold">0</p></div>
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">总生成次数</p><p id="totalGen" class="text-xl font-bold">0</p></div>
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">成功次数</p><p id="succGen" class="text-xl font-bold text-green-600">0</p></div>
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">失败次数</p><p id="failGen" class="text-xl font-bold text-red-600">0</p></div>
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">成功率</p><p id="rate" class="text-xl font-bold">0%</p></div>
-  </div>
-  <a href="index.html" class="text-green-600">返回首页</a>
-</div>
-<script>
-const API_BASE = "https://wp568-github-io.onrender.com";
-let user;
-try{
-  user = JSON.parse(localStorage.getItem('aiUser'));
-}catch(e){
-  alert('请登录'); location.href='login.html';
-}
-if(!user || !user.isAdmin){ alert('无管理员权限'); location.href='index.html'; }
+<body>
+<h1>管理员后台 - 手动给用户加积分</h1>
+<input type="text" id="target-username" placeholder="输入用户名（如：user123）">
+<input type="number" id="add-points" placeholder="输入要加的积分（如：50）">
+<button onclick="adminAddPoints()">提交充值</button>
+<div id="result"></div>
 
-async function loadStats(){
-  try{
-    const res = await fetch(`${API_BASE}/api/admin-stats`);
+<script>
+async function adminAddPoints() {
+  const username = document.getElementById('target-username').value.trim();
+  const points = parseInt(document.getElementById('add-points').value);
+  if (!username || isNaN(points) || points <= 0) {
+    document.getElementById('result').innerText = '请输入有效的用户名和积分';
+    document.getElementById('result').style.color = 'red';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/admin/add-points', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, points })
+    });
     const data = await res.json();
-    document.getElementById('userCount').innerText = data.userCount;
-    document.getElementById('totalGen').innerText = data.totalGenerate;
-    document.getElementById('succGen').innerText = data.successNum;
-    document.getElementById('failGen').innerText = data.failNum;
-    document.getElementById('rate').innerText = data.successRate;
-  }catch(e){
-    alert("加载失败");
+    if (data.ok) {
+      document.getElementById('result').innerText = `成功！用户 ${username} 当前积分：${data.newPoints}`;
+      document.getElementById('result').style.color = 'green';
+    } else {
+      document.getElementById('result').innerText = `失败：${data.msg}`;
+      document.getElementById('result').style.color = 'red';
+    }
+  } catch (e) {
+    document.getElementById('result').innerText = '网络错误，请重试';
+    document.getElementById('result').style.color = 'red';
   }
 }
-loadStats();
 </script>
 </body>
 </html>
