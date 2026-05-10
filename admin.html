@@ -2,92 +2,68 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>管理后台</title>
+  <title>积分充值</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .box { background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; }
-    .title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #1f2937; }
-    .item { padding: 8px 0; border-bottom: 1px solid #eee; }
-  </style>
 </head>
-<body class="bg-gray-100 p-4">
-<div class="max-w-6xl mx-auto">
+<body class="max-w-md mx-auto p-4">
+  <h1 class="text-xl font-bold mb-4">积分充值</h1>
 
-  <h1 class="text-2xl font-bold mb-4">管理后台</h1>
+  <select id="payType" class="border p-2 w-full mb-4">
+    <option value="1">微信支付</option>
+    <option value="2">支付宝支付</option>
+  </select>
 
-  <!-- 总览 -->
-  <div class="box">
-    <div class="title">网站总览</div>
-    <p>浏览次数：<span id="pv" class="font-bold text-green-600">0</span></p>
-    <p>总用户数：<span id="uc" class="font-bold">0</span></p>
-    <p>总生成次数：<span id="gt" class="font-bold">0</span></p>
-    <p>成功次数：<span id="gs" class="font-bold text-green-600">0</span></p>
-    <p>失败次数：<span id="gf" class="font-bold text-red-600">0</span></p>
-    <p>成功率：<span id="gr" class="font-bold text-blue-600">0%</span></p>
-  </div>
+  <button onclick="pay(10)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">10元 → 10积分</button>
+  <button onclick="pay(50)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">50元 → 50积分</button>
+  <button onclick="pay(100)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">100元 → 100积分</button>
 
-  <!-- 生成记录 -->
-  <div class="box">
-    <div class="title">用户生成记录</div>
-    <div id="glist"></div>
-  </div>
+  <div id="qrcode" class="mt-4 text-center"></div>
+  <div id="status" class="mt-2 text-sm text-gray-600"></div>
 
-  <!-- 充值记录 -->
-  <div class="box">
-    <div class="title">充值记录（微信/支付宝）</div>
-    <div id="rlist"></div>
-  </div>
+  <script>
+    const user = JSON.parse(localStorage.getItem("aiUser"));
+    const API = "https://wp568-github-io.onrender.com";
+    let currentOrderId = "";
+    let timer = null;
 
-  <!-- 手动加积分 -->
-  <div class="box">
-    <div class="title">手动给用户加积分</div>
-    <input id="uname" class="border p-2 w-full mb-2" placeholder="用户名">
-    <input id="upoints" type="number" class="border p-2 w-full mb-2" placeholder="加多少积分">
-    <button onclick="add()" class="bg-green-600 text-white p-2 w-full rounded">确认添加</button>
-    <p id="msg" class="mt-2 text-center"></p>
-  </div>
+    // 轮询订单状态
+    async function checkStatus() {
+      const res = await fetch(API + "/api/check-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: currentOrderId })
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        status.innerHTML = "<span class='text-green-600'>✅ 支付成功！积分已到账</span>";
+        clearInterval(timer);
+      } else {
+        status.innerHTML = "<span class='text-orange-500'>⌛ 等待付款中...</span>";
+      }
+    }
 
-  <a href="index.html" class="inline-block mt-4 text-green-600">← 返回首页</a>
-</div>
+    async function pay(points) {
+      const t = document.getElementById("payType").value;
+      // 1. 创建待付款订单
+      const res = await fetch(API + "/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user.username, points, payType: parseInt(t) })
+      });
+      const data = await res.json();
+      if (!data.ok) return alert("创建订单失败");
 
-<script>
-const API = "https://wp568-github-io.onrender.com";
-
-async function load() {
-  const r = await fetch(API + "/api/admin/all");
-  const d = await r.json();
-
-  document.getElementById("pv").innerText = d.pv || 0;
-  document.getElementById("uc").innerText = d.userCount || 0;
-  document.getElementById("gt").innerText = d.totalGen || 0;
-  document.getElementById("gs").innerText = d.successGen || 0;
-  document.getElementById("gf").innerText = d.failGen || 0;
-  document.getElementById("gr").innerText = d.genRate || "0%";
-
-  const gl = document.getElementById("glist");
-  d.genLogs.forEach(g => {
-    gl.innerHTML += `<div class="item">${g.time} | ${g.username} | ${g.style} | ${g.success?"✅成功":"❌失败"}</div>`;
-  });
-
-  const rl = document.getElementById("rlist");
-  d.chargeLogs.forEach(c => {
-    rl.innerHTML += `<div class="item">${c.time} | ${c.username} | +${c.points}积分 | ${c.payType==1?"微信":"支付宝"}</div>`;
-  });
-}
-load();
-
-async function add() {
-  const u = document.getElementById("uname").value;
-  const p = document.getElementById("upoints").value;
-  const res = await fetch(API + "/api/admin/add", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: u, points: parseInt(p) })
-  });
-  const d = await res.json();
-  document.getElementById("msg").innerText = d.ok ? "✅ 成功！积分：" + d.score : "❌ 失败：" + d.msg;
-}
-</script>
+      currentOrderId = data.orderId;
+      // 2. 显示二维码
+      if (t == 1) {
+        qrcode.innerHTML = `<h3>微信支付</h3><img src="/qrcode-wechat.png" width="300"><p>订单号：${currentOrderId}</p>`;
+      } else {
+        qrcode.innerHTML = `<h3>支付宝支付</h3><img src="/qrcode-alipay.png" width="300"><p>订单号：${currentOrderId}</p>`;
+      }
+      // 3. 每3秒查一次状态
+      clearInterval(timer);
+      timer = setInterval(checkStatus, 3000);
+    }
+  </script>
 </body>
 </html>
