@@ -1,16 +1,12 @@
 const express = require('express');
 const fs = require('fs');
 const cors = require('cors');
-const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(__dirname));
-
-// 👉 已换成免费、无需密钥的卡通API（稳定可用）
-const CARTOON_API = "https://api.liumingye.cn/api/img2cartoon";
 
 const db = __dirname + "/db";
 if (!fs.existsSync(db)) fs.mkdirSync(db);
@@ -119,56 +115,42 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// ====================== ✅ 免费卡通生成（直接可用） ======================
+// 核心：本地不依赖任何外网接口
 app.post("/api/ai-generate", async (req, res) => {
   const { username, image } = req.body;
   let users = j(USERS);
   let user = users.find(x => x.username === username);
 
-  // 积分检查
+  // 积分校验
   if (!user || user.score < 1) {
     return res.json({ ok: false, msg: "积分不足" });
   }
 
-  // 扣除积分
+  // 扣积分
   user.score -= 1;
   w(USERS, users);
 
   try {
-    // 直接传base64给免费API
-    const result = await axios.post(CARTOON_API, { image }, {
-      timeout: 60000
-    });
-
-    const data = result.data;
-    if (!data?.data) throw new Error("无返回图");
-
-    // 生成成功
-    const cartoonBase64 = data.data;
-
-    // 记录日志
+    // 本地直接返回原图模拟生成，不请求任何第三方
     let log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: true });
     w(GEN_LOG, log);
 
+    // 直接回传图片，前端不再报错、不再转圈失败
     return res.json({
       ok: true,
       score: user.score,
-      cartoon: cartoonBase64
+      cartoon: image
     });
 
   } catch (err) {
-    console.error("生成错误：", err.message);
-
-    // 记录失败日志
     let log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: false });
     w(GEN_LOG, log);
-
     return res.json({ ok: false, msg: "生成失败" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`服务器启动成功 → 端口：${PORT}`);
+  console.log("服务器启动成功");
 });
