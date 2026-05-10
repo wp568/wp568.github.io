@@ -127,37 +127,68 @@ function handleFile(){
   reader.readAsDataURL(file);
 }
 
-// 核心：前端原生卡通滤镜
+// 增强版卡通滤镜（含边缘检测+色彩量化）
 function makeCartoon(style){
   const canvas = resultCanvas;
   const ctx = canvas.getContext('2d');
-  canvas.width = originImage.width;
-  canvas.height = originImage.height;
+  const width = originImage.width;
+  const height = originImage.height;
+  canvas.width = width;
+  canvas.height = height;
 
-  ctx.drawImage(originImage,0,0);
-  let img = ctx.getImageData(0,0,canvas.width,canvas.height);
-  let data = img.data;
+  // 第一步：绘制原图
+  ctx.drawImage(originImage, 0, 0);
+  let imageData = ctx.getImageData(0, 0, width, height);
+  let data = imageData.data;
 
-  // 卡通色块简化
-  for(let i=0;i<data.length;i+=4){
+  // 第二步：边缘检测（Sobel算子）
+  let edgeData = detectEdges(data, width, height);
+  
+  // 第三步：色彩量化 + 风格微调
+  for(let i = 0; i < data.length; i += 4) {
     let r = data[i];
     let g = data[i+1];
     let b = data[i+2];
 
-    // 色调分块，做出卡通感
-    r = Math.floor(r/64)*64;
-    g = Math.floor(g/64)*64;
-    b = Math.floor(b/64)*64;
+    // 颜色量化（减少色阶，产生色块感）
+    r = Math.floor(r / 32) * 32;
+    g = Math.floor(g / 32) * 32;
+    b = Math.floor(b / 32) * 32;
 
-    // 不同风格微调
-    if(style==='ghibli'||style==='totoro'){
-      r = Math.min(255, r+10);
-      g = Math.min(255, g+15);
+    // 风格微调
+    switch(style) {
+      case 'ghibli':
+        r = Math.min(255, r + 15);
+        g = Math.min(255, g + 20);
+        b = Math.min(255, b + 10);
+        break;
+      case 'totoro':
+        r = Math.min(255, r + 5);
+        g = Math.min(255, g + 25);
+        b = Math.min(255, b + 5);
+        break;
+      case 'shinkai':
+        r = Math.min(255, r + 25);
+        g = Math.min(255, g + 25);
+        b = Math.min(255, b + 30);
+        break;
+      case 'spirited':
+        r = Math.min(255, r + 10);
+        g = Math.min(255, g + 10);
+        b = Math.min(255, b + 20);
+        break;
+      case 'howl':
+        r = Math.min(255, r + 20);
+        g = Math.min(255, g + 15);
+        b = Math.min(255, b + 15);
+        break;
     }
-    if(style==='shinkai'){
-      r = Math.min(255, r+20);
-      g = Math.min(255, g+20);
-      b = Math.min(255, b+25);
+
+    // 叠加边缘线条（让轮廓更清晰）
+    if(edgeData[i] === 0) {
+      r = Math.max(0, r - 50);
+      g = Math.max(0, g - 50);
+      b = Math.max(0, b - 50);
     }
 
     data[i] = r;
@@ -165,8 +196,40 @@ function makeCartoon(style){
     data[i+2] = b;
   }
 
-  ctx.putImageData(img,0,0);
+  ctx.putImageData(imageData, 0, 0);
   canvas.classList.remove('hidden');
+}
+
+// Sobel边缘检测函数
+function detectEdges(data, width, height) {
+  let output = new Uint8ClampedArray(data.length);
+  const gray = new Uint8ClampedArray(width * height);
+  
+  // 先转灰度图
+  for(let i = 0; i < data.length; i += 4) {
+    gray[i/4] = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+  }
+
+  // Sobel算子
+  const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+  const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+
+  for(let y = 1; y < height - 1; y++) {
+    for(let x = 1; x < width - 1; x++) {
+      let gx = 0, gy = 0;
+      for(let ky = -1; ky <= 1; ky++) {
+        for(let kx = -1; kx <= 1; kx++) {
+          const idx = (ky + 1) * 3 + (kx + 1);
+          const pixel = gray[(y + ky) * width + (x + kx)];
+          gx += sobelX[idx] * pixel;
+          gy += sobelY[idx] * pixel;
+        }
+      }
+      const mag = Math.sqrt(gx * gx + gy * gy);
+      output[(y * width + x) * 4] = mag > 100 ? 0 : 255;
+    }
+  }
+  return output;
 }
 
 generateBtn.onclick = async ()=>{
