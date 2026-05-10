@@ -6,7 +6,116 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="max-w-md mx-auto p-4">
-  <h1 class="text-xl font-bold mb-4">积分充值</h1>
+  <h1 class="text-xl font-bold mb-4">积分充值</h1><!-- 充值统计（只算已到账） -->
+<div class="mt-6 p-4 bg-white rounded shadow">
+  <h2 class="text-lg font-bold mb-2">充值统计（有效）</h2>
+  <p>总充值金额：<span id="totalCharge">0</span> 元</p>
+  <p>待付款订单：<span id="pendingCount">0</span> 笔</p>
+  <p>已到账订单：<span id="successCount">0</span> 笔</p>
+</div>
+
+<!-- 待付款订单（需手动确认） -->
+<div class="mt-6 p-4 bg-white rounded shadow">
+  <h2 class="text-lg font-bold mb-2">待付款订单（用户已扫码，未到账）</h2>
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="bg-gray-100">
+        <th class="p-2 text-left">订单号</th>
+        <th class="p-2 text-left">用户</th>
+        <th class="p-2 text-left">金额</th>
+        <th class="p-2 text-left">支付方式</th>
+        <th class="p-2 text-left">创建时间</th>
+        <th class="p-2 text-left">操作</th>
+      </tr>
+    </thead>
+    <tbody id="pendingList"></tbody>
+  </table>
+</div>
+
+<!-- 已到账订单（统计用） -->
+<div class="mt-6 p-4 bg-white rounded shadow">
+  <h2 class="text-lg font-bold mb-2">已到账订单（有效充值）</h2>
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="bg-gray-100">
+        <th class="p-2 text-left">订单号</th>
+        <th class="p-2 text-left">用户</th>
+        <th class="p-2 text-left">金额</th>
+        <th class="p-2 text-left">支付方式</th>
+        <th class="p-2 text-left">到账时间</th>
+      </tr>
+    </thead>
+    <tbody id="successList"></tbody>
+  </table>
+</div>
+
+<script>
+// 在你原来的 loadData 函数里，把充值部分替换成：
+function loadData() {
+  fetch(API + "/api/admin/all")
+    .then(res => res.json())
+    .then(data => {
+      // ... 你原来的浏览量、生成统计代码 ...
+
+      // 充值统计
+      document.getElementById("totalCharge").innerText = data.totalCharge;
+      document.getElementById("pendingCount").innerText = data.pendingOrders.length;
+      document.getElementById("successCount").innerText = data.successOrders.length;
+
+      // 待付款列表
+      let pendingHtml = "";
+      data.pendingOrders.forEach(o => {
+        pendingHtml += `
+          <tr>
+            <td class="p-2">${o.orderId}</td>
+            <td class="p-2">${o.username}</td>
+            <td class="p-2">${o.points}</td>
+            <td class="p-2">${o.payType === 1 ? "微信" : "支付宝"}</td>
+            <td class="p-2">${o.createTime}</td>
+            <td class="p-2">
+              <button onclick="confirmOrder('${o.orderId}')" class="bg-green-500 text-white p-1 rounded">确认到账</button>
+            </td>
+          </tr>
+        `;
+      });
+      document.getElementById("pendingList").innerHTML = pendingHtml;
+
+      // 已到账列表
+      let successHtml = "";
+      data.successOrders.forEach(o => {
+        successHtml += `
+          <tr>
+            <td class="p-2">${o.orderId}</td>
+            <td class="p-2">${o.username}</td>
+            <td class="p-2">${o.points}</td>
+            <td class="p-2">${o.payType === 1 ? "微信" : "支付宝"}</td>
+            <td class="p-2">${o.confirmTime}</td>
+          </tr>
+        `;
+      });
+      document.getElementById("successList").innerHTML = successHtml;
+    });
+}
+
+// 管理员确认到账
+function confirmOrder(orderId) {
+  if (!confirm("确认该订单已到账？")) return;
+  fetch(API + "/api/admin/confirm-order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ orderId })
+  }).then(res => res.json()).then(data => {
+    if (data.ok) alert("确认成功，积分已到账");
+    else alert("失败：" + data.msg);
+    loadData(); // 刷新列表
+  });
+}
+
+// 页面加载时自动刷新
+setInterval(loadData, 5000);
+loadData();
+</script>
+
 
   <select id="payType" class="border p-2 w-full mb-4">
     <option value="1">微信支付</option>
