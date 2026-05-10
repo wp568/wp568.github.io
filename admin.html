@@ -19,17 +19,27 @@
   <a href="index.html" class="text-green-600">返回首页</a>
 </div>
 <script>
-const API_BASE = "https://ghibli-ai-api.onrender.com";
-let user = JSON.parse(localStorage.getItem('aiUser'));
+const API_BASE = "https://ai-api-fxbs.onrender.com";
+let user;
+try{
+  user = JSON.parse(localStorage.getItem('aiUser'));
+}catch(e){
+  alert('请登录'); location.href='login.html';
+}
 if(!user || !user.isAdmin){ alert('无管理员权限'); location.href='index.html'; }
+
 async function loadStats(){
-  const res = await fetch(`${API_BASE}/api/admin-stats`);
-  const data = await res.json();
-  document.getElementById('userCount').innerText = data.userCount;
-  document.getElementById('totalGen').innerText = data.totalGenerate;
-  document.getElementById('succGen').innerText = data.successNum;
-  document.getElementById('failGen').innerText = data.failNum;
-  document.getElementById('rate').innerText = data.successRate;
+  try{
+    const res = await fetch(`${API_BASE}/api/admin-stats`);
+    const data = await res.json();
+    document.getElementById('userCount').innerText = data.userCount;
+    document.getElementById('totalGen').innerText = data.totalGenerate;
+    document.getElementById('succGen').innerText = data.successNum;
+    document.getElementById('failGen').innerText = data.failGen;
+    document.getElementById('rate').innerText = data.successRate;
+  }catch(e){
+    alert("加载失败");
+  }
 }
 loadStats();
 </script>
