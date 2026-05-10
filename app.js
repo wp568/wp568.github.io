@@ -29,55 +29,74 @@ app.get("/api/pv", (req, res) => {
   res.send("ok");
 });
 
-// 创建订单
+// 创建待付款订单
 app.post("/api/create-order", (req, res) => {
   const { username, points, payType } = req.body;
   const orderId = Date.now().toString();
   let orders = j(ORDERS);
-  orders.push({ orderId, username, points, payType, status: "pending", createTime: new Date().toLocaleString() });
+  orders.push({
+    orderId, username, points, payType,
+    status: "pending",
+    createTime: new Date().toLocaleString(),
+    confirmTime: ""
+  });
   w(ORDERS, orders);
   res.json({ ok: true, orderId });
 });
 
-// 查询订单
+// 查询订单状态
 app.post("/api/check-order", (req, res) => {
   const { orderId } = req.body;
   const order = j(ORDERS).find(o => o.orderId === orderId);
   res.json({ ok: !!order, status: order?.status });
 });
 
-// 确认订单 + 加积分
+// 管理员确认订单 → 自动加积分
 app.post("/api/admin/confirm-order", (req, res) => {
   const { orderId } = req.body;
   let orders = j(ORDERS);
   let users = j(USERS);
+
   const idx = orders.findIndex(o => o.orderId === orderId);
   if (idx === -1) return res.json({ ok: false, msg: "订单不存在" });
+
   const order = orders[idx];
-  if (order.status === "success") return res.json({ ok: false, msg: "已完成" });
+  if (order.status === "success") return res.json({ ok: false, msg: "已确认过" });
 
   const userIdx = users.findIndex(u => u.username === order.username);
-  if (userIdx !== -1) { users[userIdx].score += order.points; w(USERS, users); }
+  if (userIdx !== -1) {
+    users[userIdx].score += order.points;
+    w(USERS, users);
+  }
+
   orders[idx].status = "success";
   orders[idx].confirmTime = new Date().toLocaleString();
   w(ORDERS, orders);
+
   res.json({ ok: true });
 });
 
-// 后台统计
+// 后台总数据
 app.get("/api/admin/all", (req, res) => {
   const users = j(USERS);
   const gen = j(GEN_LOG);
   const orders = j(ORDERS);
   const pv = j(PV).length ? j(PV)[0].count : 0;
+
   const totalGen = gen.length;
   const successGen = gen.filter(g => g.success).length;
   const failGen = totalGen - successGen;
   const genRate = totalGen === 0 ? "0%" : (successGen / totalGen * 100).toFixed(1) + "%";
+
   const pendingOrders = orders.filter(o => o.status === "pending");
   const successOrders = orders.filter(o => o.status === "success");
   const totalCharge = successOrders.reduce((sum, o) => sum + o.points, 0);
-  res.json({ pv, userCount: users.length, totalGen, successGen, failGen, genRate, totalCharge, pendingOrders, successOrders });
+
+  res.json({
+    pv, userCount: users.length,
+    totalGen, successGen, failGen, genRate,
+    totalCharge, pendingOrders, successOrders
+  });
 });
 
 // 注册
@@ -97,50 +116,55 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// =====================================================================
-// ✅ 真实AI卡通生成接口（Render 100% 可调用，无墙、无限流、稳定）
-// =====================================================================
+// AI 照片转卡通 - 无密钥、Render海外直接可用
 app.post("/api/ai-generate", async (req, res) => {
   const { username, image } = req.body;
   let users = j(USERS);
   let user = users.find(x => x.username === username);
 
+  // 积分校验
   if (!user || user.score < 1) {
     return res.json({ ok: false, msg: "积分不足" });
   }
 
   try {
-    // 调用 HuggingFace 官方免费AI卡通模型（Render 完美支持）
-    const response = await axios.post(
-      "https://api-inference.huggingface.co/models/akhileshkv0/Photo-to-cartoon",
-      { inputs: image.split(',')[1] },
-      {
-        headers: { Authorization: "Bearer hf_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" },
-        responseType: 'arraybuffer',
-        timeout: 60000
-      }
+    // 干净可用、海外直连的照片转卡通接口
+    const base64Raw = image.replace(/^data:image\/\w+;base64,/, "");
+
+    const ret = await axios.post(
+      "https://cartoonize-lkqov624da-uc.a.run.app/cartoonize",
+      { image: base64Raw },
+      { timeout: 30000 }
     );
 
-    const cartoonBase64 = "data:image/png;base64," + Buffer.from(response.data).toString('base64');
+    if (!ret.data || !ret.data.image) {
+      throw new Error("无卡通图返回");
+    }
 
     // 扣积分
     user.score -= 1;
     w(USERS, users);
 
-    // 日志
+    // 记录成功日志
     let log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: true });
     w(GEN_LOG, log);
 
-    return res.json({ ok: true, score: user.score, cartoon: cartoonBase64 });
+    return res.json({
+      ok: true,
+      score: user.score,
+      cartoon: "data:image/png;base64," + ret.data.image
+    });
 
-  } catch (e) {
-    console.error("生成错误", e);
+  } catch (err) {
+    console.error("生成错误：", err.message);
     let log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: false });
     w(GEN_LOG, log);
-    return res.json({ ok: false, msg: "生成失败" });
+    return res.json({ ok: false, msg: "生成失败，请稍后重试" });
   }
 });
 
-app.listen(PORT, () => console.log("✅ 服务器启动成功：" + PORT));
+app.listen(PORT, () => {
+  console.log("服务器启动成功");
+});
