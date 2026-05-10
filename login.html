@@ -15,7 +15,7 @@
   <p class="text-center mt-4">没有账号？<a href="register.html" class="text-green-600">去注册</a></p>
 </div>
 <script>
-const API_BASE = "https://ai-api-fxbs.onrender.com";
+const API_BASE = "https://wp568-github-io.onrender.com";
 document.getElementById('loginBtn').onclick = async ()=>{
   const username = document.getElementById('username').value.trim();
   const pwd = document.getElementById('pwd').value.trim();
@@ -30,7 +30,7 @@ document.getElementById('loginBtn').onclick = async ()=>{
     localStorage.setItem('aiUser',JSON.stringify(data));
     location.href='index.html';
   }catch(e){
-    alert('网络错误，请重试');
+    alert('网络故障，请稍后重试');
   }
 };
 </script>
