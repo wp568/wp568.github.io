@@ -67,7 +67,7 @@
 </main>
 
 <script>
-const API_BASE = "/";
+const API_BASE = "https://wp568-github-io.onrender.com";
 let loginUser = null;
 let originImage = null;
 
@@ -133,7 +133,7 @@ generateBtn.onclick = async ()=>{
   generateBtn.disabled = true;
 
   try{
-    const res = await fetch(`${API_BASE}api/ai-generate`,{
+    const res = await fetch(`${API_BASE}/api/ai-generate`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -144,7 +144,7 @@ generateBtn.onclick = async ()=>{
     
     const data = await res.json();
     if(!data.ok){
-      alert("生成失败：" + (data.msg || "服务器异常"));
+      alert("生成失败：" + (data.msg || "服务器繁忙"));
       return;
     }
 
@@ -152,7 +152,6 @@ generateBtn.onclick = async ()=>{
     localStorage.setItem('aiUser', JSON.stringify(loginUser));
     checkLogin();
 
-    // 显示AI返回的真实图片
     resultImg.src = data.cartoon;
     resultImg.classList.remove('hidden');
     downloadBtn.classList.remove('hidden');
