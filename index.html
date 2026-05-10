@@ -56,7 +56,7 @@
   </section>
 </main>
 <script>
-const API_BASE = "https://ghibli-ai-api.onrender.com";
+const API_BASE = "https://ai-api-fxbs.onrender.com";
 let loginUser = null;
 const dropArea = document.getElementById('dropArea');
 const fileInput = document.getElementById('fileInput');
@@ -75,7 +75,12 @@ function checkLogin(){
     userInfo.innerHTML = `<a href="login.html" class="text-ghibli-green">登录</a> <a href="register.html" class="text-ghibli-green">注册</a>`;
     return false;
   }
-  loginUser = JSON.parse(user);
+  try{
+    loginUser = JSON.parse(user);
+  }catch(e){
+    localStorage.removeItem('aiUser');
+    return false;
+  }
   userInfo.innerHTML = `
     <span>欢迎：${loginUser.username} | 积分：${loginUser.score}</span>
     <a href="recharge.html" class="text-orange-500">充值</a>
@@ -93,6 +98,7 @@ dropArea.ondrop = e=>{ e.preventDefault(); fileInput.files = e.dataTransfer.file
 
 function handleFile(){
   const file = fileInput.files[0];
+  if(!file) return;
   const reader = new FileReader();
   reader.onload = e=>{
     originalImg.src = e.target.result;
@@ -107,28 +113,55 @@ function handleFile(){
 generateBtn.onclick = async ()=>{
   if(!checkLogin()){ alert('请先登录'); location.href='login.html'; return; }
   const style = document.querySelector('input[name="style"]:checked').value;
-  loading.classList.remove('hidden'); resultImg.classList.add('hidden'); generateBtn.disabled=true;
-  const res = await fetch(`${API_BASE}/api/deduct-score`,{
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({username:loginUser.username, style, success:true})
-  });
-  const data = await res.json();
-  if(data.code!==0){ alert(data.msg); loading.classList.add('hidden'); generateBtn.disabled=false; return; }
-  loginUser.score = data.score;
-  localStorage.setItem('aiUser',JSON.stringify(loginUser));
-  checkLogin();
-  await new Promise(r=>setTimeout(r,2000));
-  resultImg.src = originalImg.src;
-  resultImg.classList.remove('hidden');
-  downloadBtn.classList.remove('hidden');
-  loading.classList.add('hidden');
-  generateBtn.disabled=false;
+  loading.classList.remove('hidden');
+  resultImg.classList.add('hidden');
+  generateBtn.disabled=true;
+
+  try{
+    const res = await fetch(`${API_BASE}/api/deduct-score`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:loginUser.username, style, success:true})
+    });
+    const data = await res.json();
+    if(data.code !== 0){
+      alert(data.msg);
+      loading.classList.add('hidden');
+      generateBtn.disabled=false;
+      return;
+    }
+
+    loginUser.score = data.score;
+    localStorage.setItem('aiUser',JSON.stringify(loginUser));
+    checkLogin();
+
+    const aiRes = await fetch(`${API_BASE}/api/ai-anime`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        image: originalImg.src,
+        style: style
+      })
+    });
+    const aiData = await aiRes.json();
+    resultImg.src = aiData.image;
+    resultImg.classList.remove('hidden');
+    downloadBtn.classList.remove('hidden');
+  }catch(e){
+    alert("AI服务繁忙，使用预览效果");
+    resultImg.src = originalImg.src;
+    resultImg.classList.remove('hidden');
+    downloadBtn.classList.remove('hidden');
+  }finally{
+    loading.classList.add('hidden');
+    generateBtn.disabled=false;
+  }
 };
 
 downloadBtn.onclick = ()=>{
   const a = document.createElement('a');
   a.href = resultImg.src;
-  a.download = '宫崎骏风格.png';
+  a.download = '宫崎骏风格_'+Date.now()+'.png';
   a.click();
 };
 </script>
