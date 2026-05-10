@@ -3,139 +3,211 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI卡通生成</title>
+  <title>AI宫崎骏多风格照片转换器</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <script>
-    tailwind.config={theme:{extend:{colors:{ghibli:{green:'#7ba05b',blue:'#87b0d7',yellow:'#f9d76c',brown:'#9c6f47',light:'#f5f5f5'}}}}}
+    tailwind.config={theme:{extend:{colors:{ghibli:{green:'#7ba05b',blue:'#87b0d7',yellow:'#f9d76c',brown:'#9c6f47',light:'#f5f2e9'}}}}}
   </script>
 </head>
 <body class="bg-ghibli-light min-h-screen">
 <header class="bg-white shadow-md sticky top-0 z-50">
   <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-    <h1 class="text-2xl font-bold text-ghibli-green"><i class="fa fa-magic mr-2"></i>AI卡通转换器</h1>
-    <div id="userInfo" class="flex items-center gap-2 text-sm"></div>
+    <h1 class="text-2xl font-bold text-ghibli-green"><i class="fa fa-leaf mr-2"></i>AI动漫风格转换器</h1>
+    <div id="userInfo" class="flex items-center gap-3 text-sm"></div>
   </div>
 </header>
-
 <main class="container mx-auto px-4 py-10">
-  <div class="max-w-4xl mx-auto bg-white rounded-2xl p-6 shadow-lg">
+  <section class="max-w-4xl mx-auto bg-white rounded-2xl p-6 md:p-10 shadow-lg">
     <div class="mb-6">
-      <h3 class="font-medium mb-3">选择风格</h3>
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <label class="border p-2 rounded text-center"><input type="radio" name="style" value="ghibli" checked> 宫崎骏</label>
-        <label class="border p-2 rounded text-center"><input type="radio" name="style" value="totoro"> 龙猫</label>
-        <label class="border p-2 rounded text-center"><input type="radio" name="style" value="spirited"> 千与千寻</label>
-        <label class="border p-2 rounded text-center"><input type="radio" name="style" value="howl"> 哈尔</label>
-        <label class="border p-2 rounded text-center"><input type="radio" name="style" value="shinkai"> 新海诚</label>
+      <h3 class="text-gray-700 font-medium mb-3">选择风格</h3>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="ghibli" checked> 经典宫崎骏
+        </label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="totoro"> 龙猫
+        </label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="spirited"> 千与千寻
+        </label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="howl"> 哈尔的移动城堡
+        </label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="shinkai"> 新海诚
+        </label>
       </div>
     </div>
-
-    <div id="uploadArea" class="border-2 border-dashed p-8 text-center mb-6 cursor-pointer">
+    <div id="dropArea" class="border-2 border-dashed border-ghibli-blue rounded-xl p-8 text-center cursor-pointer hover:border-ghibli-green transition mb-6">
       <input type="file" id="fileInput" accept="image/*" class="hidden">
-      <i class="fa fa-cloud-upload text-4xl text-gray-400"></i>
-      <p class="mt-2">点击上传图片</p>
+      <i class="fa fa-cloud-upload text-5xl text-ghibli-blue mb-3"></i>
+      <p class="text-gray-600 mb-2">点击上传 或 拖拽照片</p>
     </div>
-
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <div class="bg-gray-50 p-4 rounded">
-        <h3>原图</h3>
-        <img id="originalImg" class="max-w-full max-h-64 mx-auto">
+      <div id="originalContainer" class="hidden">
+        <h3 class="text-center text-gray-600 mb-2">原图</h3>
+        <div class="bg-gray-100 h-72 rounded-lg flex items-center justify-center">
+          <img id="originalImg" class="max-w-full max-h-full object-contain">
+        </div>
       </div>
-      <div class="bg-gray-50 p-4 rounded">
-        <h3>AI卡通图</h3>
-        <img id="resultImg" class="max-w-full max-h-64 mx-auto">
-        <div id="loading" class="hidden text-center mt-2"><i class="fa fa-spinner fa-spin"></i> 生成中…</div>
+      <div id="resultContainer" class="hidden">
+        <h3 class="text-center text-gray-600 mb-2">AI卡通效果</h3>
+        <div class="bg-gray-100 h-72 rounded-lg flex items-center justify-center relative">
+          <div id="loading" class="hidden"><i class="fa fa-spinner fa-spin text-3xl text-ghibli-green"></i><p class="mt-2">AI绘制中...</p></div>
+          <canvas id="resultCanvas" class="max-w-full max-h-full object-contain hidden"></canvas>
+        </div>
       </div>
     </div>
-
-    <div class="flex justify-center gap-3">
-      <button id="generateBtn" class="bg-green-600 text-white px-6 py-2 rounded hidden">生成卡通（扣1积分）</button>
-      <button id="downloadBtn" class="bg-yellow-500 text-white px-6 py-2 rounded hidden">下载图片</button>
+    <div class="flex justify-center gap-4">
+      <button id="generateBtn" class="px-6 py-3 bg-ghibli-green text-white rounded-lg hidden">生成图片（消耗1积分）</button>
+      <button id="downloadBtn" class="px-6 py-3 bg-ghibli-yellow rounded-lg hidden">下载图片</button>
     </div>
-  </div>
+  </section>
 </main>
 
 <script>
-const API = "https://wp568-github-io.onrender.com";
-let user = JSON.parse(localStorage.getItem("aiUser"));
-let originalImage = null;
+const API_BASE = "https://wp568-github-io.onrender.com";
+let loginUser = null;
+let originImage = null;
 
-function checkLogin() {
-  if (!user) {
-    userInfo.innerHTML = `<a href="login.html" class="text-green-600">登录</a> <a href="register.html" class="text-green-600">注册</a>`;
+const dropArea = document.getElementById('dropArea');
+const fileInput = document.getElementById('fileInput');
+const originalContainer = document.getElementById('originalContainer');
+const resultContainer = document.getElementById('resultContainer');
+const originalImg = document.getElementById('originalImg');
+const resultCanvas = document.getElementById('resultCanvas');
+const generateBtn = document.getElementById('generateBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const loading = document.getElementById('loading');
+const userInfo = document.getElementById('userInfo');
+
+function checkLogin(){
+  const user = localStorage.getItem('aiUser');
+  if(!user){
+    userInfo.innerHTML = `<a href="login.html" class="text-ghibli-green">登录</a> <a href="register.html" class="text-ghibli-green">注册</a>`;
+    return false;
+  }
+  try{
+    loginUser = JSON.parse(user);
+  }catch(e){
+    localStorage.removeItem('aiUser');
     return false;
   }
   userInfo.innerHTML = `
-    <span>欢迎：${user.username} | 积分：${user.score}</span>
+    <span>欢迎：${loginUser.username} | 积分：${loginUser.score}</span>
     <a href="recharge.html" class="text-orange-500">充值</a>
-    ${user.isAdmin ? '<a href="admin.html" class="text-red-600">后台</a>' : ''}
-    <button onclick="logout()" class="text-gray-500">退出</button>
-  `;
+    ${loginUser.isAdmin ? '<a href="admin.html" class="text-red-500">后台</a>' : ''}
+    <button onclick="logout()" class="text-gray-500">退出</button>`;
   return true;
 }
-
-function logout() {
-  localStorage.removeItem("aiUser");
-  location.href = "login.html";
-}
-
 checkLogin();
+function logout(){ localStorage.removeItem('aiUser'); location.href='index.html'; }
 
-uploadArea.onclick = () => fileInput.click();
-fileInput.onchange = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+dropArea.onclick = ()=>fileInput.click();
+fileInput.onchange = handleFile;
+dropArea.ondragover = e=>e.preventDefault();
+dropArea.ondrop = e=>{ e.preventDefault(); fileInput.files = e.dataTransfer.files; handleFile(); };
+
+function handleFile(){
+  const file = fileInput.files[0];
+  if(!file) return;
   const reader = new FileReader();
-  reader.onload = (ev) => {
-    originalImage = ev.target.result;
-    originalImg.src = originalImage;
-    generateBtn.classList.remove("hidden");
+  reader.onload = e=>{
+    originImage = new Image();
+    originImage.src = e.target.result;
+    originImage.onload = ()=>{
+      originalImg.src = originImage.src;
+      originalContainer.classList.remove('hidden');
+      resultContainer.classList.remove('hidden');
+      generateBtn.classList.remove('hidden');
+      downloadBtn.classList.add('hidden');
+    }
   };
   reader.readAsDataURL(file);
-};
+}
 
-generateBtn.onclick = async () => {
-  if (!user) return alert("请先登录");
-  if (!originalImage) return alert("请上传图片");
+// 核心：前端原生卡通滤镜
+function makeCartoon(style){
+  const canvas = resultCanvas;
+  const ctx = canvas.getContext('2d');
+  canvas.width = originImage.width;
+  canvas.height = originImage.height;
 
-  generateBtn.disabled = true;
-  loading.classList.remove("hidden");
-  resultImg.src = "";
+  ctx.drawImage(originImage,0,0);
+  let img = ctx.getImageData(0,0,canvas.width,canvas.height);
+  let data = img.data;
 
-  try {
-    const res = await fetch(API + "/api/ai-generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: user.username,
-        image: originalImage,
-        style: document.querySelector('input[name="style"]:checked').value
-      })
-    });
+  // 卡通色块简化
+  for(let i=0;i<data.length;i+=4){
+    let r = data[i];
+    let g = data[i+1];
+    let b = data[i+2];
 
-    const data = await res.json();
-    if (data.ok) {
-      resultImg.src = data.image;
-      user.score = data.score;
-      localStorage.setItem("aiUser", JSON.stringify(user));
-      checkLogin();
-      downloadBtn.classList.remove("hidden");
-    } else {
-      alert("生成失败：" + data.msg);
+    // 色调分块，做出卡通感
+    r = Math.floor(r/64)*64;
+    g = Math.floor(g/64)*64;
+    b = Math.floor(b/64)*64;
+
+    // 不同风格微调
+    if(style==='ghibli'||style==='totoro'){
+      r = Math.min(255, r+10);
+      g = Math.min(255, g+15);
     }
-  } catch (e) {
-    alert("生成失败，请重试");
-  } finally {
-    generateBtn.disabled = false;
-    loading.classList.add("hidden");
+    if(style==='shinkai'){
+      r = Math.min(255, r+20);
+      g = Math.min(255, g+20);
+      b = Math.min(255, b+25);
+    }
+
+    data[i] = r;
+    data[i+1] = g;
+    data[i+2] = b;
+  }
+
+  ctx.putImageData(img,0,0);
+  canvas.classList.remove('hidden');
+}
+
+generateBtn.onclick = async ()=>{
+  if(!checkLogin()){ alert('请先登录'); location.href='login.html'; return; }
+  const style = document.querySelector('input[name="style"]:checked').value;
+  loading.classList.remove('hidden');
+  resultCanvas.classList.add('hidden');
+  generateBtn.disabled=true;
+
+  try{
+    const res = await fetch(`${API_BASE}/api/ai-generate`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:loginUser.username, image: originImage.src, style, success:true})
+    });
+    const data = await res.json();
+    if(data.ok !== true){
+      alert("积分不足或生成失败：" + (data.msg || "未知错误"));
+      loading.classList.add('hidden');
+      generateBtn.disabled=false;
+      return;
+    }
+    loginUser.score = data.score;
+    localStorage.setItem('aiUser',JSON.stringify(loginUser));
+    checkLogin();
+
+    // 生成卡通
+    makeCartoon(style);
+    downloadBtn.classList.remove('hidden');
+  }catch(e){
+    alert("生成失败，请稍后再试");
+  }finally{
+    loading.classList.add('hidden');
+    generateBtn.disabled=false;
   }
 };
 
-downloadBtn.onclick = () => {
-  const a = document.createElement("a");
-  a.href = resultImg.src;
-  a.download = "cartoon.png";
+downloadBtn.onclick = ()=>{
+  const a = document.createElement('a');
+  a.href = resultCanvas.toDataURL("image/png");
+  a.download = '卡通风格_'+Date.now()+'.png';
   a.click();
 };
 </script>
