@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const cors = require('cors');
+const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
@@ -116,11 +117,11 @@ app.post("/api/login", (req, res) => {
 });
 
 // ==============================================
-// ✅ 最终修复：纯本地卡通生成，永不失败、100%可用
+// ✅ 最终版：真实AI卡通画风生成
 // ==============================================
 app.post("/api/ai-generate", async (req, res) => {
   try {
-    const { username, image } = req.body;
+    const { username, image, style } = req.body;
     let users = j(USERS);
     let user = users.find(x => x.username === username);
 
@@ -128,6 +129,20 @@ app.post("/api/ai-generate", async (req, res) => {
     if (!user || user.score < 1) {
       return res.json({ ok: false, msg: "积分不足" });
     }
+
+    // 调用真实的AI卡通生成API
+    const base64Raw = image.replace(/^data:image\/\w+;base64,/, "");
+    const response = await axios.post(
+      "https://api-inference.huggingface.co/models/akhileshkv0/Photo-to-cartoon",
+      { inputs: base64Raw },
+      {
+        headers: { Authorization: "Bearer hf_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" }, // 这里需要你自己的HuggingFace API Key
+        responseType: 'arraybuffer',
+        timeout: 60000
+      }
+    );
+
+    const cartoonBase64 = "data:image/png;base64," + Buffer.from(response.data).toString('base64');
 
     // 扣积分
     user.score -= 1;
@@ -138,19 +153,19 @@ app.post("/api/ai-generate", async (req, res) => {
     log.push({ username, time: new Date().toLocaleString(), success: true });
     w(GEN_LOG, log);
 
-    // ✅ 直接返回成功，前端自己做卡通效果（完美匹配你的前端）
+    // 返回卡通图
     return res.json({
       ok: true,
       score: user.score,
-      cartoon: image
+      cartoon: cartoonBase64
     });
 
   } catch (err) {
-    console.error("错误：", err);
-    return res.json({ ok: false, msg: "生成失败" });
+    console.error("AI生成错误：", err);
+    return res.json({ ok: false, msg: "生成失败，请稍后重试" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log("✅ 服务器启动成功 - 100%正常可用");
+  console.log("✅ 服务器启动成功 - 真实AI卡通画风已就绪");
 });
