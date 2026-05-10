@@ -15,18 +15,23 @@
   <p class="text-center mt-4">没有账号？<a href="register.html" class="text-green-600">去注册</a></p>
 </div>
 <script>
-const API_BASE = "https://ghibli-ai-api.onrender.com";
+const API_BASE = "https://ai-api-fxbs.onrender.com";
 document.getElementById('loginBtn').onclick = async ()=>{
-  const username = document.getElementById('username').value;
-  const pwd = document.getElementById('pwd').value;
-  const res = await fetch(`${API_BASE}/api/login`,{
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({username,pwd})
-  });
-  const data = await res.json();
-  if(data.code!==0){ alert(data.msg); return; }
-  localStorage.setItem('aiUser',JSON.stringify(data));
-  location.href='index.html';
+  const username = document.getElementById('username').value.trim();
+  const pwd = document.getElementById('pwd').value.trim();
+  if(!username || !pwd){ alert('请输入账号密码'); return; }
+  try{
+    const res = await fetch(`${API_BASE}/api/login`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username,pwd})
+    });
+    const data = await res.json();
+    if(data.code !==0){ alert(data.msg); return; }
+    localStorage.setItem('aiUser',JSON.stringify(data));
+    location.href='index.html';
+  }catch(e){
+    alert('网络错误，请重试');
+  }
 };
 </script>
 </body>
