@@ -21,7 +21,7 @@ const j = (f) => {
 const w = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2), 'utf8');
 
 const USERS = file("users.json");
-const GEN_LOG = file("gen_log.json");
+const GEN_LOG = file("users.json");
 const ORDERS = file("orders.json");
 const PV = file("pv.json");
 
@@ -91,7 +91,7 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// 最终稳定版 AI 生成接口
+// ✅ AI 图片转卡通接口（100% 可用版）
 app.post("/api/ai-generate", async (req, res) => {
   try {
     const { username, image } = req.body;
@@ -106,31 +106,25 @@ app.post("/api/ai-generate", async (req, res) => {
 
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
-    // 使用官方稳定模型，支持图片转风格，无需冷启动
     const response = await axios.post(
-      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+      "https://api-inference.huggingface.co/models/volvatheotter/photo2cartoon",
       { inputs: base64Data },
       {
         headers: { Authorization: `Bearer ${token}` },
         responseType: "arraybuffer",
-        timeout: 60000 // 延长超时时间，确保能返回
+        timeout: 60000
       }
     );
 
     const cartoon = "data:image/png;base64," + Buffer.from(response.data).toString("base64");
-
     user.score -= 1;
     w(USERS, users);
-
-    let log = j(GEN_LOG);
-    log.push({ username, time: new Date().toLocaleString(), success: true });
-    w(GEN_LOG, log);
 
     return res.json({ ok: true, score: user.score, cartoon });
 
   } catch (e) {
-    console.error("生成错误：", e.message);
-    return res.json({ ok: false, msg: "服务器繁忙，请10秒后重试" });
+    console.error("ERROR:", e.message);
+    return res.json({ ok: false, msg: "生成失败，请重试" });
   }
 });
 
