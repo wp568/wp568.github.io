@@ -6,11 +6,12 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 允许你的 GitHub Pages 跨域访问
+// 允许你的正式域名 + GitHub Pages + 本地调试
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://wp568.github.io"
+    "https://wp568.github.io",
+    "https://zhongkui.it.com"
   ],
   credentials: true
 }));
@@ -18,7 +19,6 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
 
-// 数据库
 const dbDir = path.join(__dirname, 'db');
 const userDbPath = path.join(dbDir, 'users.json');
 const logDbPath = path.join(dbDir, 'generate_log.json');
