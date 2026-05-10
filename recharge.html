@@ -1,57 +1,45 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>积分充值（真实转账）</title>
-<style>
-  body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; text-align: center; }
-  .charge-btn { padding: 15px 30px; font-size: 18px; margin: 10px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
-  #qr-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); padding-top: 100px; }
-  .qr-box { background: white; padding: 30px; display: inline-block; border-radius: 10px; }
-  .qr-box img { width: 200px; margin: 10px; }
-  .close-btn { margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; }
-</style>
+  <meta charset="UTF-8">
+  <title>积分充值</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-<h1>积分充值（真实转账，联系管理员到账）</h1>
-<p>当前你的积分：<span id="user-points">0</span></p>
+<body class="p-4 max-w-md mx-auto">
+  <h1 class="text-xl font-bold mb-4">积分充值</h1>
 
-<div>
-  <button class="charge-btn" onclick="showQr(10)">10积分（10元）</button>
-  <button class="charge-btn" onclick="showQr(50)">50积分（50元）</button>
-  <button class="charge-btn" onclick="showQr(100)">100积分（100元）</button>
-</div>
+  <select id="payType" class="border p-2 w-full mb-4">
+    <option value="1">微信支付</option>
+    <option value="2">支付宝</option>
+  </select>
 
-<!-- 二维码弹窗 -->
-<div id="qr-modal">
-  <div class="qr-box">
-    <h3>请转账 <span id="pay-amount">0</span> 元</h3>
-    <p>微信收款码：</p>
-    <img src="/qrcode-wechat.png" alt="微信收款码">
-    <p>支付宝收款码：</p>
-    <img src="/qrcode-alipay.png" alt="支付宝收款码">
-    <p>转账后，发送“用户名+转账金额”给管理员手动加积分</p>
-    <button class="close-btn" onclick="closeQr()">关闭</button>
-  </div>
-</div>
+  <button onclick="goPay(10)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">10元 = 10积分</button>
+  <button onclick="goPay(50)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">50元 = 50积分</button>
+  <button onclick="goPay(100)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">100元 = 100积分</button>
 
-<script>
-// 从后端获取当前用户积分（需登录）
-async function loadPoints() {
-  const res = await fetch('/api/user-points');
-  const data = await res.json();
-  document.getElementById('user-points').innerText = data.points || 0;
-}
-loadPoints();
+  <div id="qrcode" class="mt-4 text-center"></div>
 
-function showQr(amount) {
-  document.getElementById('pay-amount').innerText = amount;
-  document.getElementById('qr-modal').style.display = 'block';
-}
-function closeQr() {
-  document.getElementById('qr-modal').style.display = 'none';
-}
-</script>
+  <script>
+    const API = "https://wp568-github-io.onrender.com";
+    let user = JSON.parse(localStorage.getItem("aiUser"));
+
+    function goPay(points) {
+      const payType = document.getElementById("payType").value;
+      const name = payType == 1 ? "微信" : "支付宝";
+
+      // 提交记录
+      fetch(API + "/api/charge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: user.username, points, payType: parseInt(payType) })
+      });
+
+      document.getElementById("qrcode").innerHTML = `
+        <h3>请使用${name}支付</h3>
+        <img src="/${name == 1 ? 'wechat.png' : 'alipay.png'}" width="300">
+        <p class="mt-2">支付后联系管理员到账</p>
+      `;
+    }
+  </script>
 </body>
 </html>
