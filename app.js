@@ -9,11 +9,8 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(__dirname));
 
-// 你的 Gemini API KEY
-const GEMINI_API_KEY = "AIzaSyAfU1Ndy3AHQ248fDaaFhtFNh7qrFmc6yc";
-
-// 👇 这是真正的 Gemini 图片生成接口（Imagen）
-const IMAGEN_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagegeneration:generate?key=${GEMINI_API_KEY}`;
+// 👉 已换成免费、无需密钥的卡通API（稳定可用）
+const CARTOON_API = "https://api.liumingye.cn/api/img2cartoon";
 
 const db = __dirname + "/db";
 if (!fs.existsSync(db)) fs.mkdirSync(db);
@@ -122,7 +119,7 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// ====================== ✅ 已修复：Gemini Imagen 图片生成 ======================
+// ====================== ✅ 免费卡通生成（直接可用） ======================
 app.post("/api/ai-generate", async (req, res) => {
   const { username, image } = req.body;
   let users = j(USERS);
@@ -138,26 +135,16 @@ app.post("/api/ai-generate", async (req, res) => {
   w(USERS, users);
 
   try {
-    // 处理图片 base64
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-
-    // 👇 正确的 Imagen 生成图片请求格式
-    const requestBody = {
-      prompt: "Turn this photo into a cute cartoon style, keep the face, high quality, no text, clean",
-      image: { mimeType: "image/png", data: base64Data }
-    };
-
-    const result = await axios.post(IMAGEN_URL, requestBody, {
-      timeout: 90000
+    // 直接传base64给免费API
+    const result = await axios.post(CARTOON_API, { image }, {
+      timeout: 60000
     });
 
     const data = result.data;
-    if (!data.generatedImages || data.generatedImages.length === 0) {
-      throw new Error("No image returned");
-    }
+    if (!data?.data) throw new Error("无返回图");
 
     // 生成成功
-    const imgBase64 = "data:image/png;base64," + data.generatedImages[0].imageBytes;
+    const cartoonBase64 = data.data;
 
     // 记录日志
     let log = j(GEN_LOG);
@@ -167,11 +154,11 @@ app.post("/api/ai-generate", async (req, res) => {
     return res.json({
       ok: true,
       score: user.score,
-      cartoon: imgBase64
+      cartoon: cartoonBase64
     });
 
   } catch (err) {
-    console.error("生成错误：", err.response?.data || err.message);
+    console.error("生成错误：", err.message);
 
     // 记录失败日志
     let log = j(GEN_LOG);
