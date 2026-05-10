@@ -9,10 +9,9 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(__dirname));
 
-// ========== 你的 Gemini API 已填入 ==========
+// 你的 Gemini API KEY
 const GEMINI_API_KEY = "AIzaSyAfU1Ndy3AHQ248fDaaFhtFNh7qrFmc6yc";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`;
-// ==========================================
 
 const db = __dirname + "/db";
 if (!fs.existsSync(db)) fs.mkdirSync(db);
@@ -56,7 +55,7 @@ app.post("/api/check-order", (req, res) => {
   res.json({ ok: !!order, status: order?.status });
 });
 
-// 管理员确认订单 → 自动加积分（已修复）
+// 管理员确认订单 → 自动加积分
 app.post("/api/admin/confirm-order", (req, res) => {
   const { orderId } = req.body;
   let orders = j(ORDERS);
@@ -68,7 +67,6 @@ app.post("/api/admin/confirm-order", (req, res) => {
   const order = orders[idx];
   if (order.status === "success") return res.json({ ok: false, msg: "已确认过" });
 
-  // 自动给用户加积分（100% 正常）
   const userIdx = users.findIndex(u => u.username === order.username);
   if (userIdx !== -1) {
     users[userIdx].score += order.points;
@@ -116,14 +114,13 @@ app.post("/api/register", (req, res) => {
 });
 
 // 登录
-app.post("/api/login", (req, res) =>
-{
+app.post("/api/login", (req, res) => {
   const { username, pwd } = req.body;
   const u = j(USERS).find(x => x.username === username && x.pwd === pwd);
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// AI 生成卡通（Google Gemini 已生效）
+// AI 生成卡通（Google Gemini）
 app.post("/api/ai-generate", async (req, res) => {
   const { username, image } = req.body;
   let users = j(USERS);
@@ -133,12 +130,10 @@ app.post("/api/ai-generate", async (req, res) => {
     return res.json({ ok: false, msg: "积分不足" });
   }
 
-  // 扣积分
   user.score -= 1;
   w(USERS, users);
 
   try {
-    // 清理 base64 前缀
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
     const body = {
@@ -154,7 +149,7 @@ app.post("/api/ai-generate", async (req, res) => {
     const result = response.data;
 
     if (!result.candidates || !result.candidates[0]?.content?.parts) {
-      return res.json({ ok: false, msg: "生成失败，API返回空" });
+      return res.json({ ok: false, msg: "生成失败" });
     }
 
     const imgPart = result.candidates[0].content.parts.find(p => p.inline_data);
@@ -164,15 +159,14 @@ app.post("/api/ai-generate", async (req, res) => {
 
     const cartoonBase64 = "data:image/png;base64," + imgPart.inline_data.data;
 
-    // 记录日志
     let log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: true });
     w(GEN_LOG, log);
 
     return res.json({ ok: true, score: user.score, cartoon: cartoonBase64 });
   } catch (e) {
-    console.error("Gemini 错误：", e.response?.data || e.message);
-    return res.json({ ok: false, msg: "生成失败：" + (e.message || "未知错误") });
+    console.error("错误", e);
+    return res.json({ ok: false, msg: "生成失败" });
   }
 });
 
