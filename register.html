@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>注册</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+  <h2 class="text-2xl font-bold text-center mb-6">用户注册</h2>
+  <input id="username" placeholder="设置用户名" class="w-full border rounded-lg p-3 mb-4">
+  <input id="pwd" type="password" placeholder="设置密码" class="w-full border rounded-lg p-3 mb-4">
+  <button id="regBtn" class="w-full bg-green-600 text-white p-3 rounded-lg">注册（赠送10积分）</button>
+  <p class="text-center mt-4">已有账号？<a href="login.html" class="text-green-600">去登录</a></p>
+</div>
+<script>
+const API_BASE = "https://ghibli-ai-api.onrender.com";
+document.getElementById('regBtn').onclick = async ()=>{
+  const username = document.getElementById('username').value;
+  const pwd = document.getElementById('pwd').value;
+  const res = await fetch(`${API_BASE}/api/register`,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username,pwd})
+  });
+  const data = await res.json();
+  if(data.code!==0){ alert(data.msg); return; }
+  alert('注册成功！赠送10积分');
+  location.href='login.html';
+};
+</script>
+</body>
+</html>

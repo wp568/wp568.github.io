@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI宫崎骏多风格照片转换器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config={theme:{extend:{colors:{ghibli:{green:'#7ba05b',blue:'#87b0d7',yellow:'#f9d76c',brown:'#9c6f47',light:'#f5f2e9'}}}}}
+  </script>
+</head>
+<body class="bg-ghibli-light min-h-screen">
+<header class="bg-white shadow-md sticky top-0 z-50">
+  <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-ghibli-green"><i class="fa fa-leaf mr-2"></i>AI动漫风格转换器</h1>
+    <div id="userInfo" class="flex items-center gap-3 text-sm"></div>
+  </div>
+</header>
+<main class="container mx-auto px-4 py-10">
+  <section class="max-w-4xl mx-auto bg-white rounded-2xl p-6 md:p-10 shadow-lg">
+    <div class="mb-6">
+      <h3 class="text-gray-700 font-medium mb-3">选择风格</h3>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="ghibli" checked> 经典宫崎骏</label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="totoro"> 龙猫</label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="spirited"> 千与千寻</label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="howl"> 哈尔的移动城堡</label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="shinkai"> 新海诚</label>
+      </div>
+    </div>
+    <div id="dropArea" class="border-2 border-dashed border-ghibli-blue rounded-xl p-8 text-center cursor-pointer hover:border-ghibli-green transition mb-6">
+      <input type="file" id="fileInput" accept="image/*" class="hidden">
+      <i class="fa fa-cloud-upload text-5xl text-ghibli-blue mb-3"></i>
+      <p class="text-gray-600 mb-2">点击上传 或 拖拽照片</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div id="originalContainer" class="hidden">
+        <h3 class="text-center text-gray-600 mb-2">原图</h3>
+        <div class="bg-gray-100 h-72 rounded-lg flex items-center justify-center">
+          <img id="originalImg" class="max-w-full max-h-full object-contain">
+        </div>
+      </div>
+      <div id="resultContainer" class="hidden">
+        <h3 class="text-center text-gray-600 mb-2">AI生成效果</h3>
+        <div class="bg-gray-100 h-72 rounded-lg flex items-center justify-center relative">
+          <div id="loading" class="hidden"><i class="fa fa-spinner fa-spin text-3xl text-ghibli-green"></i><p class="mt-2">AI绘制中...</p></div>
+          <img id="resultImg" class="max-w-full max-h-full object-contain hidden">
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-center gap-4">
+      <button id="generateBtn" class="px-6 py-3 bg-ghibli-green text-white rounded-lg hidden">生成图片（消耗1积分）</button>
+      <button id="downloadBtn" class="px-6 py-3 bg-ghibli-yellow rounded-lg hidden">下载图片</button>
+    </div>
+  </section>
+</main>
+<script>
+const API_BASE = "https://ghibli-ai-api.onrender.com";
+let loginUser = null;
+const dropArea = document.getElementById('dropArea');
+const fileInput = document.getElementById('fileInput');
+const originalContainer = document.getElementById('originalContainer');
+const resultContainer = document.getElementById('resultContainer');
+const originalImg = document.getElementById('originalImg');
+const resultImg = document.getElementById('resultImg');
+const generateBtn = document.getElementById('generateBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const loading = document.getElementById('loading');
+const userInfo = document.getElementById('userInfo');
+
+function checkLogin(){
+  const user = localStorage.getItem('aiUser');
+  if(!user){
+    userInfo.innerHTML = `<a href="login.html" class="text-ghibli-green">登录</a> <a href="register.html" class="text-ghibli-green">注册</a>`;
+    return false;
+  }
+  loginUser = JSON.parse(user);
+  userInfo.innerHTML = `
+    <span>欢迎：${loginUser.username} | 积分：${loginUser.score}</span>
+    <a href="recharge.html" class="text-orange-500">充值</a>
+    ${loginUser.isAdmin ? '<a href="admin.html" class="text-red-500">后台</a>' : ''}
+    <button onclick="logout()" class="text-gray-500">退出</button>`;
+  return true;
+}
+checkLogin();
+function logout(){ localStorage.removeItem('aiUser'); location.href='index.html'; }
+
+dropArea.onclick = ()=>fileInput.click();
+fileInput.onchange = handleFile;
+dropArea.ondragover = e=>e.preventDefault();
+dropArea.ondrop = e=>{ e.preventDefault(); fileInput.files = e.dataTransfer.files; handleFile(); };
+
+function handleFile(){
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+  reader.onload = e=>{
+    originalImg.src = e.target.result;
+    originalContainer.classList.remove('hidden');
+    resultContainer.classList.remove('hidden');
+    generateBtn.classList.remove('hidden');
+    downloadBtn.classList.add('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+generateBtn.onclick = async ()=>{
+  if(!checkLogin()){ alert('请先登录'); location.href='login.html'; return; }
+  const style = document.querySelector('input[name="style"]:checked').value;
+  loading.classList.remove('hidden'); resultImg.classList.add('hidden'); generateBtn.disabled=true;
+  const res = await fetch(`${API_BASE}/api/deduct-score`,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:loginUser.username, style, success:true})
+  });
+  const data = await res.json();
+  if(data.code!==0){ alert(data.msg); loading.classList.add('hidden'); generateBtn.disabled=false; return; }
+  loginUser.score = data.score;
+  localStorage.setItem('aiUser',JSON.stringify(loginUser));
+  checkLogin();
+  await new Promise(r=>setTimeout(r,2000));
+  resultImg.src = originalImg.src;
+  resultImg.classList.remove('hidden');
+  downloadBtn.classList.remove('hidden');
+  loading.classList.add('hidden');
+  generateBtn.disabled=false;
+};
+
+downloadBtn.onclick = ()=>{
+  const a = document.createElement('a');
+  a.href = resultImg.src;
+  a.download = '宫崎骏风格.png';
+  a.click();
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+<div class="max-w-5xl mx-auto bg-white rounded-xl p-6 shadow-lg">
+  <h2 class="text-2xl font-bold mb-6">网站数据统计后台</h2>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">总用户数</p><p id="userCount" class="text-xl font-bold">0</p></div>
+    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">总生成次数</p><p id="totalGen" class="text-xl font-bold">0</p></div>
+    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">成功次数</p><p id="succGen" class="text-xl font-bold text-green-600">0</p></div>
+    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">失败次数</p><p id="failGen" class="text-xl font-bold text-red-600">0</p></div>
+    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">成功率</p><p id="rate" class="text-xl font-bold">0%</p></div>
+  </div>
+  <a href="index.html" class="text-green-600">返回首页</a>
+</div>
+<script>
+const API_BASE = "https://ghibli-ai-api.onrender.com";
+let user = JSON.parse(localStorage.getItem('aiUser'));
+if(!user || !user.isAdmin){ alert('无管理员权限'); location.href='index.html'; }
+async function loadStats(){
+  const res = await fetch(`${API_BASE}/api/admin-stats`);
+  const data = await res.json();
+  document.getElementById('userCount').innerText = data.userCount;
+  document.getElementById('totalGen').innerText = data.totalGenerate;
+  document.getElementById('succGen').innerText = data.successNum;
+  document.getElementById('failGen').innerText = data.failNum;
+  document.getElementById('rate').innerText = data.successRate;
+}
+loadStats();
+</script>
+</body>
+</html>
