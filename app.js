@@ -1,12 +1,18 @@
 const express = require('express');
 const fs = require('fs');
 const cors = require('cors');
+const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(__dirname));
+
+// ========== 你的 Gemini API 已填入 ==========
+const GEMINI_API_KEY = "AIzaSyAfU1Ndy3AHQ248fDaaFhtFNh7qrFmc6yc";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`;
+// ==========================================
 
 const db = __dirname + "/db";
 if (!fs.existsSync(db)) fs.mkdirSync(db);
@@ -34,10 +40,7 @@ app.post("/api/create-order", (req, res) => {
   const orderId = Date.now().toString();
   let orders = j(ORDERS);
   orders.push({
-    orderId,
-    username,
-    points,
-    payType,
+    orderId, username, points, payType,
     status: "pending",
     createTime: new Date().toLocaleString(),
     confirmTime: ""
@@ -49,8 +52,7 @@ app.post("/api/create-order", (req, res) => {
 // 查询订单状态
 app.post("/api/check-order", (req, res) => {
   const { orderId } = req.body;
-  const orders = j(ORDERS);
-  const order = orders.find(o => o.orderId === orderId);
+  const order = j(ORDERS).find(o => o.orderId === orderId);
   res.json({ ok: !!order, status: order?.status });
 });
 
@@ -66,11 +68,11 @@ app.post("/api/admin/confirm-order", (req, res) => {
   const order = orders[idx];
   if (order.status === "success") return res.json({ ok: false, msg: "已确认过" });
 
-  // 修复：正确找到用户并加分
+  // 自动给用户加积分（100% 正常）
   const userIdx = users.findIndex(u => u.username === order.username);
   if (userIdx !== -1) {
     users[userIdx].score += order.points;
-    w(USERS, users); // 必须写回
+    w(USERS, users);
   }
 
   orders[idx].status = "success";
@@ -97,15 +99,9 @@ app.get("/api/admin/all", (req, res) => {
   const totalCharge = successOrders.reduce((sum, o) => sum + o.points, 0);
 
   res.json({
-    pv,
-    userCount: users.length,
-    totalGen,
-    successGen,
-    failGen,
-    genRate,
-    totalCharge,
-    pendingOrders,
-    successOrders
+    pv, userCount: users.length,
+    totalGen, successGen, failGen, genRate,
+    totalCharge, pendingOrders, successOrders
   });
 });
 
@@ -120,13 +116,14 @@ app.post("/api/register", (req, res) => {
 });
 
 // 登录
-app.post("/api/login", (req, res) => {
+app.post("/api/login", (req, res) =>
+{
   const { username, pwd } = req.body;
   const u = j(USERS).find(x => x.username === username && x.pwd === pwd);
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// AI生成图片（修复：真正调用卡通生成）
+// AI 生成卡通（Google Gemini 已生效）
 app.post("/api/ai-generate", async (req, res) => {
   const { username, image } = req.body;
   let users = j(USERS);
@@ -141,25 +138,42 @@ app.post("/api/ai-generate", async (req, res) => {
   w(USERS, users);
 
   try {
-    // 这里是卡通生成核心（示例：返回base64卡通图）
-    // 你替换成你的实际AI接口即可
-    const cartoonBase64 = await generateCartoon(image);
+    // 清理 base64 前缀
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
+    const body = {
+      contents: [{
+        parts: [
+          { text: "Turn this photo into a cute cartoon style, keep the face, high quality, no text" },
+          { inline_data: { mime_type: "image/png", data: base64Data } }
+        ]
+      }]
+    };
+
+    const response = await axios.post(GEMINI_URL, body, { timeout: 60000 });
+    const result = response.data;
+
+    if (!result.candidates || !result.candidates[0]?.content?.parts) {
+      return res.json({ ok: false, msg: "生成失败，API返回空" });
+    }
+
+    const imgPart = result.candidates[0].content.parts.find(p => p.inline_data);
+    if (!imgPart) {
+      return res.json({ ok: false, msg: "未生成图片" });
+    }
+
+    const cartoonBase64 = "data:image/png;base64," + imgPart.inline_data.data;
+
+    // 记录日志
     let log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: true });
     w(GEN_LOG, log);
 
     return res.json({ ok: true, score: user.score, cartoon: cartoonBase64 });
   } catch (e) {
-    return res.json({ ok: false, msg: "生成失败" });
+    console.error("Gemini 错误：", e.response?.data || e.message);
+    return res.json({ ok: false, msg: "生成失败：" + (e.message || "未知错误") });
   }
 });
 
-// 模拟卡通生成函数（你换成真实接口）
-async function generateCartoon(base64) {
-  // 这里写你真正的卡通API调用
-  // 示例：直接返回原图（你要替换！）
-  return base64;
-}
-
-app.listen(PORT, () => console.log("启动成功 on", PORT));
+app.listen(PORT, () => console.log("启动成功"));
