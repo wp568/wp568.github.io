@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>积分充值</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -10,7 +11,7 @@
 
   <select id="payType" class="border p-2 w-full mb-4">
     <option value="1">微信支付</option>
-    <option value="2">支付宝</option>
+    <option value="2">支付宝支付</option>
   </select>
 
   <button onclick="goPay(10)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">10元 = 10积分</button>
@@ -27,18 +28,31 @@
       const payType = document.getElementById("payType").value;
       const name = payType == 1 ? "微信" : "支付宝";
 
-      // 提交记录
+      // 提交充值记录
       fetch(API + "/api/charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: user.username, points, payType: parseInt(payType) })
+        body: JSON.stringify({
+          username: user.username,
+          points: points,
+          payType: parseInt(payType)
+        })
       });
 
-      document.getElementById("qrcode").innerHTML = `
-        <h3>请使用${name}支付</h3>
-        <img src="/${name == 1 ? 'wechat.png' : 'alipay.png'}" width="300">
-        <p class="mt-2">支付后联系管理员到账</p>
-      `;
+      // ✅ 这里已经改成你正确的图片名字：qrcode-wechat.png / qrcode-alipay.png
+      if (payType == 1) {
+        document.getElementById("qrcode").innerHTML = `
+          <h3>请使用微信支付</h3>
+          <img src="/qrcode-wechat.png" width="300" style="border:1px solid #eee">
+          <p class="mt-2">支付成功后，请联系管理员手动加积分</p>
+        `;
+      } else {
+        document.getElementById("qrcode").innerHTML = `
+          <h3>请使用支付宝支付</h3>
+          <img src="/qrcode-alipay.png" width="300" style="border:1px solid #eee">
+          <p class="mt-2">支付成功后，请联系管理员手动加积分</p>
+        `;
+      }
     }
   </script>
 </body>
