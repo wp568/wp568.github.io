@@ -4,9 +4,8 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// 允许你的正式域名 + GitHub Pages + 本地调试
 app.use(cors({
   origin: [
     "http://localhost:3000",
@@ -47,7 +46,7 @@ app.post('/api/register', (req, res) => {
     regTime: new Date().toLocaleString()
   });
   saveUsers(users);
-  res.json({ code: 0, msg: '注册成功', score: 10 });
+  res.json({ code: 0, msg: '注册成功', score: 10, isAdmin: username === 'admin' });
 });
 
 // 登录
@@ -82,7 +81,7 @@ app.post('/api/deduct-score', (req, res) => {
   res.json({ code: 0, msg: '生成成功', score: user.score });
 });
 
-// 充值
+// 充值加积分（用户端模拟）
 app.post('/api/recharge', (req, res) => {
   const { username, num } = req.body;
   let users = getUsers();
@@ -109,6 +108,17 @@ app.get('/api/admin-stats', (req, res) => {
     failNum,
     successRate
   });
+});
+
+// 【关键补上】管理员手动给用户加积分接口
+app.post('/api/admin/addscore', (req, res) => {
+  const { username, num } = req.body;
+  let users = getUsers();
+  let u = users.find(x => x.username === username);
+  if(!u) return res.json({ok:false,msg:"用户不存在"});
+  u.score += num;
+  saveUsers(users);
+  res.json({ok:true, score:u.score});
 });
 
 app.listen(PORT, () => {
