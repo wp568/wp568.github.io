@@ -91,7 +91,7 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// 稳定版 AI 生成接口
+// 最终稳定版 AI 生成接口
 app.post("/api/ai-generate", async (req, res) => {
   try {
     const { username, image } = req.body;
@@ -106,14 +106,14 @@ app.post("/api/ai-generate", async (req, res) => {
 
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
-    // 使用公共稳定模型，无需激活，响应更快
+    // 使用官方稳定模型，支持图片转风格，无需冷启动
     const response = await axios.post(
-      "https://api-inference.huggingface.co/models/joey/bibimbap",
+      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
       { inputs: base64Data },
       {
         headers: { Authorization: `Bearer ${token}` },
         responseType: "arraybuffer",
-        timeout: 30000
+        timeout: 60000 // 延长超时时间，确保能返回
       }
     );
 
