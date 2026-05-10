@@ -2,19 +2,6 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>充值</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="max-w-md mx-auto p-4">
-  <h1 class="text-xl font-bold mb-4">积分充值</h1>
-
-  <select id="payType" class="border p-2 w-full mb-4">
-    <option value="1">微信支付</option>
-    <option value="2">支付宝支付</option>
-  </select><!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
   <title>积分充值</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -76,35 +63,6 @@
       // 3. 每3秒查一次状态
       clearInterval(timer);
       timer = setInterval(checkStatus, 3000);
-    }
-  </script>
-</body>
-</html>
-
-
-  <button onclick="pay(10)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">10元 → 10积分</button>
-  <button onclick="pay(50)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">50元 → 50积分</button>
-  <button onclick="pay(100)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">100元 → 100积分</button>
-
-  <div id="qrcode" class="mt-4 text-center"></div>
-
-  <script>
-    const user = JSON.parse(localStorage.getItem("aiUser"));
-    const API = "https://wp568-github-io.onrender.com";
-
-    function pay(points) {
-      const t = document.getElementById("payType").value;
-      fetch(API + "/api/charge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: user.username, points, payType: parseInt(t) })
-      });
-
-      if (t == 1) {
-        qrcode.innerHTML = `<h3>微信支付</h3><img src="/qrcode-wechat.png" width="300"><p>支付后联系管理员</p>`;
-      } else {
-        qrcode.innerHTML = `<h3>支付宝支付</h3><img src="/qrcode-alipay.png" width="300"><p>支付后联系管理员</p>`;
-      }
     }
   </script>
 </body>
