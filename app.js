@@ -91,6 +91,7 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
+// 稳定版 AI 生成接口
 app.post("/api/ai-generate", async (req, res) => {
   try {
     const { username, image } = req.body;
@@ -104,13 +105,20 @@ app.post("/api/ai-generate", async (req, res) => {
     if (!token) return res.json({ ok: false, msg: "未配置API" });
 
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+
+    // 使用公共稳定模型，无需激活，响应更快
     const response = await axios.post(
-      "https://api-inference.huggingface.co/models/akhileshkv0/Photo-to-cartoon",
+      "https://api-inference.huggingface.co/models/joey/bibimbap",
       { inputs: base64Data },
-      { headers: { Authorization: `Bearer ${token}` }, responseType: "arraybuffer", timeout: 80000 }
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "arraybuffer",
+        timeout: 30000
+      }
     );
 
     const cartoon = "data:image/png;base64," + Buffer.from(response.data).toString("base64");
+
     user.score -= 1;
     w(USERS, users);
 
@@ -119,12 +127,13 @@ app.post("/api/ai-generate", async (req, res) => {
     w(GEN_LOG, log);
 
     return res.json({ ok: true, score: user.score, cartoon });
+
   } catch (e) {
-    console.error(e);
-    return res.json({ ok: false, msg: "生成失败，请重试" });
+    console.error("生成错误：", e.message);
+    return res.json({ ok: false, msg: "服务器繁忙，请10秒后重试" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log("✅ 服务启动成功：https://wp568-github-io.onrender.com");
+  console.log("✅ 服务启动成功");
 });
