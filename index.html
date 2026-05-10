@@ -22,11 +22,21 @@
     <div class="mb-6">
       <h3 class="text-gray-700 font-medium mb-3">选择风格</h3>
       <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="ghibli" checked> 经典宫崎骏</label>
-        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="totoro"> 龙猫</label>
-        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="spirited"> 千与千寻</label>
-        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="howl"> 哈尔的移动城堡</label>
-        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light"><input type="radio" name="style" value="shinkai"> 新海诚</label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="ghibli" checked> 经典宫崎骏
+        </label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="totoro"> 龙猫
+        </label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="spirited"> 千与千寻
+        </label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="howl"> 哈尔的移动城堡
+        </label>
+        <label class="border rounded-lg p-3 text-center cursor-pointer hover:bg-ghibli-light">
+          <input type="radio" name="style" value="shinkai"> 新海诚
+        </label>
       </div>
     </div>
     <div id="dropArea" class="border-2 border-dashed border-ghibli-blue rounded-xl p-8 text-center cursor-pointer hover:border-ghibli-green transition mb-6">
@@ -42,10 +52,10 @@
         </div>
       </div>
       <div id="resultContainer" class="hidden">
-        <h3 class="text-center text-gray-600 mb-2">AI生成效果</h3>
+        <h3 class="text-center text-gray-600 mb-2">AI卡通效果</h3>
         <div class="bg-gray-100 h-72 rounded-lg flex items-center justify-center relative">
           <div id="loading" class="hidden"><i class="fa fa-spinner fa-spin text-3xl text-ghibli-green"></i><p class="mt-2">AI绘制中...</p></div>
-          <img id="resultImg" class="max-w-full max-h-full object-contain hidden">
+          <canvas id="resultCanvas" class="max-w-full max-h-full object-contain hidden"></canvas>
         </div>
       </div>
     </div>
@@ -55,15 +65,18 @@
     </div>
   </section>
 </main>
+
 <script>
 const API_BASE = "https://wp568-github-io.onrender.com";
 let loginUser = null;
+let originImage = null;
+
 const dropArea = document.getElementById('dropArea');
 const fileInput = document.getElementById('fileInput');
 const originalContainer = document.getElementById('originalContainer');
 const resultContainer = document.getElementById('resultContainer');
 const originalImg = document.getElementById('originalImg');
-const resultImg = document.getElementById('resultImg');
+const resultCanvas = document.getElementById('resultCanvas');
 const generateBtn = document.getElementById('generateBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const loading = document.getElementById('loading');
@@ -101,20 +114,66 @@ function handleFile(){
   if(!file) return;
   const reader = new FileReader();
   reader.onload = e=>{
-    originalImg.src = e.target.result;
-    originalContainer.classList.remove('hidden');
-    resultContainer.classList.remove('hidden');
-    generateBtn.classList.remove('hidden');
-    downloadBtn.classList.add('hidden');
+    originImage = new Image();
+    originImage.src = e.target.result;
+    originImage.onload = ()=>{
+      originalImg.src = originImage.src;
+      originalContainer.classList.remove('hidden');
+      resultContainer.classList.remove('hidden');
+      generateBtn.classList.remove('hidden');
+      downloadBtn.classList.add('hidden');
+    }
   };
   reader.readAsDataURL(file);
+}
+
+// 核心：前端原生卡通滤镜
+function makeCartoon(style){
+  const canvas = resultCanvas;
+  const ctx = canvas.getContext('2d');
+  canvas.width = originImage.width;
+  canvas.height = originImage.height;
+
+  ctx.drawImage(originImage,0,0);
+  let img = ctx.getImageData(0,0,canvas.width,canvas.height);
+  let data = img.data;
+
+  // 卡通色块简化
+  for(let i=0;i<data.length;i+=4){
+    let r = data[i];
+    let g = data[i+1];
+    let b = data[i+2];
+
+    // 色调分块，做出卡通感
+    r = Math.floor(r/64)*64;
+    g = Math.floor(g/64)*64;
+    b = Math.floor(b/64)*64;
+
+    // 不同风格微调
+    if(style==='ghibli'||style==='totoro'){
+      r = Math.min(255, r+10);
+      g = Math.min(255, g+15);
+    }
+    if(style==='shinkai'){
+      r = Math.min(255, r+20);
+      g = Math.min(255, g+20);
+      b = Math.min(255, b+25);
+    }
+
+    data[i] = r;
+    data[i+1] = g;
+    data[i+2] = b;
+  }
+
+  ctx.putImageData(img,0,0);
+  canvas.classList.remove('hidden');
 }
 
 generateBtn.onclick = async ()=>{
   if(!checkLogin()){ alert('请先登录'); location.href='login.html'; return; }
   const style = document.querySelector('input[name="style"]:checked').value;
   loading.classList.remove('hidden');
-  resultImg.classList.add('hidden');
+  resultCanvas.classList.add('hidden');
   generateBtn.disabled=true;
 
   try{
@@ -130,17 +189,15 @@ generateBtn.onclick = async ()=>{
       generateBtn.disabled=false;
       return;
     }
-
     loginUser.score = data.score;
     localStorage.setItem('aiUser',JSON.stringify(loginUser));
     checkLogin();
 
-    // 临时先用原图预览，后端我帮你配好后再开真实AI
-    resultImg.src = originalImg.src;
-    resultImg.classList.remove('hidden');
+    // 生成卡通
+    makeCartoon(style);
     downloadBtn.classList.remove('hidden');
   }catch(e){
-    alert("网络繁忙，请稍后再试");
+    alert("生成失败，请稍后再试");
   }finally{
     loading.classList.add('hidden');
     generateBtn.disabled=false;
@@ -149,8 +206,8 @@ generateBtn.onclick = async ()=>{
 
 downloadBtn.onclick = ()=>{
   const a = document.createElement('a');
-  a.href = resultImg.src;
-  a.download = '宫崎骏风格_'+Date.now()+'.png';
+  a.href = resultCanvas.toDataURL("image/png");
+  a.download = '卡通风格_'+Date.now()+'.png';
   a.click();
 };
 </script>
