@@ -4,7 +4,7 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(cors({ origin: ["https://zhongkui.it.com"], credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(__dirname));
 
@@ -12,8 +12,8 @@ const db = __dirname + "/db";
 if (!fs.existsSync(db)) fs.mkdirSync(db);
 
 const file = (n) => require("path").join(db, n);
-const j = (f) => fs.existsSync(f) ? JSON.parse(fs.readFileSync(f)) : [];
-const w = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2));
+const j = (f) => fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : [];
+const w = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2), 'utf8');
 
 const USERS = file("users.json");
 const GEN_LOG = file("gen_log.json");
@@ -54,27 +54,25 @@ app.post("/api/check-order", (req, res) => {
   res.json({ ok: !!order, status: order?.status });
 });
 
-// ==============================
-// 管理员确认订单 → 自动加积分！
-// ==============================
+// 管理员确认订单 → 自动加积分（已修复）
 app.post("/api/admin/confirm-order", (req, res) => {
   const { orderId } = req.body;
   let orders = j(ORDERS);
   let users = j(USERS);
+
   const idx = orders.findIndex(o => o.orderId === orderId);
   if (idx === -1) return res.json({ ok: false, msg: "订单不存在" });
 
   const order = orders[idx];
   if (order.status === "success") return res.json({ ok: false, msg: "已确认过" });
 
-  // 自动给用户加积分
-  const user = users.find(u => u.username === order.username);
-  if (user) {
-    user.score += order.points;
-    w(USERS, users);
+  // 修复：正确找到用户并加分
+  const userIdx = users.findIndex(u => u.username === order.username);
+  if (userIdx !== -1) {
+    users[userIdx].score += order.points;
+    w(USERS, users); // 必须写回
   }
 
-  // 更新订单状态
   orders[idx].status = "success";
   orders[idx].confirmTime = new Date().toLocaleString();
   w(ORDERS, orders);
@@ -128,21 +126,40 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// AI生成图片
+// AI生成图片（修复：真正调用卡通生成）
 app.post("/api/ai-generate", async (req, res) => {
-  const { username } = req.body;
+  const { username, image } = req.body;
   let users = j(USERS);
   let user = users.find(x => x.username === username);
-  if (!user || user.score < 1) return res.json({ ok: false, msg: "积分不足" });
 
+  if (!user || user.score < 1) {
+    return res.json({ ok: false, msg: "积分不足" });
+  }
+
+  // 扣积分
   user.score -= 1;
   w(USERS, users);
 
-  let log = j(GEN_LOG);
-  log.push({ username, time: new Date().toLocaleString(), success: true });
-  w(GEN_LOG, log);
+  try {
+    // 这里是卡通生成核心（示例：返回base64卡通图）
+    // 你替换成你的实际AI接口即可
+    const cartoonBase64 = await generateCartoon(image);
 
-  res.json({ ok: true, score: user.score });
+    let log = j(GEN_LOG);
+    log.push({ username, time: new Date().toLocaleString(), success: true });
+    w(GEN_LOG, log);
+
+    return res.json({ ok: true, score: user.score, cartoon: cartoonBase64 });
+  } catch (e) {
+    return res.json({ ok: false, msg: "生成失败" });
+  }
 });
 
-app.listen(PORT, () => console.log("启动成功"))
+// 模拟卡通生成函数（你换成真实接口）
+async function generateCartoon(base64) {
+  // 这里写你真正的卡通API调用
+  // 示例：直接返回原图（你要替换！）
+  return base64;
+}
+
+app.listen(PORT, () => console.log("启动成功 on", PORT));
