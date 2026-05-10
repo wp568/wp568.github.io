@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI卡通生成器</title>
+<!-- 引入 OpenCV.js（免费前端AI滤镜核心） -->
+<script src="https://cdn.jsdelivr.net/npm/opencv.js@1.2.1/opencv.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 0 20px; }
+  .style-buttons { margin: 20px 0; }
+  .style-buttons button { padding: 10px 15px; margin: 0 5px; font-size: 16px; cursor: pointer; }
+  #preview-canvas { max-width: 100%; border: 1px solid #ccc; margin: 20px 0; }
+  #upload-input { margin: 20px 0; }
+</style>
+</head>
+<body>
+<h1>免费AI卡通生成（5种风格）</h1>
+
+<div class="style-buttons">
+  <button id="style-hayao">宫崎骏水彩</button>
+  <button id="style-shinkai">新海诚鲜艳</button>
+  <button id="style-comic">黑白漫画</button>
+  <button id="style-cartoon">经典卡通</button>
+  <button id="style-sketch">铅笔速写</button>
+</div>
+
+<input type="file" id="upload-input" accept="image/*">
+<canvas id="preview-canvas"></canvas>
+
+<script>
+let originalImg = null;
+const canvas = document.getElementById('preview-canvas');
+const ctx = canvas.getContext('2d');
+
+// 上传图片
+document.getElementById('upload-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    originalImg = new Image();
+    originalImg.src = event.target.result;
+    originalImg.onload = function() {
+      // 默认用宫崎骏风格
+      applyCartoonFilter('hayao');
+    };
+  };
+  reader.readAsDataURL(file);
+});
+
+// 卡通滤镜核心函数
+function applyCartoonFilter(style) {
+  if (!originalImg) return;
+  // 重置画布尺寸
+  canvas.width = originalImg.width;
+  canvas.height = originalImg.height;
+  ctx.drawImage(originalImg, 0, 0);
+  let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  // OpenCV 处理
+  let src = cv.matFromImageData(imgData);
+  let dst = new cv.Mat();
+  let gray = new cv.Mat();
+  let edges = new cv.Mat();
+
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+  cv.medianBlur(gray, gray, 5);
+  cv.adaptiveThreshold(gray, edges, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 9, 9);
+
+  // 5种风格逻辑
+  switch(style) {
+    case 'hayao': // 宫崎骏：柔和水彩
+      cv.bilateralFilter(src, dst, 9, 75, 75);
+      break;
+    case 'shinkai': // 新海诚：鲜艳锐化
+      cv.bilateralFilter(src, dst, 7, 50, 50);
+      break;
+    case 'comic': // 漫画：纯黑白线稿
+      dst = edges.clone();
+      break;
+    case 'cartoon': // 经典卡通：大色块
+      cv.bilateralFilter(src, dst, 12, 100, 100);
+      break;
+    case 'sketch': // 速写：铅笔线条
+      cv.Canny(gray, edges, 50, 150);
+      dst = edges.clone();
+      break;
+  }
+
+  // 显示结果
+  cv.imshow(canvas, dst);
+  // 释放内存
+  src.delete(); dst.delete(); gray.delete(); edges.delete();
+}
+
+// 绑定风格按钮
+document.getElementById('style-hayao').onclick = () => applyCartoonFilter('hayao');
+document.getElementById('style-shinkai').onclick = () => applyCartoonFilter('shinkai');
+document.getElementById('style-comic').onclick = () => applyCartoonFilter('comic');
+document.getElementById('style-cartoon').onclick = () => applyCartoonFilter('cartoon');
+document.getElementById('style-sketch').onclick = () => applyCartoonFilter('sketch');
+</script>
+</body>
+</html>
