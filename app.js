@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const cors = require('cors');
+const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
@@ -12,14 +13,15 @@ const db = __dirname + "/db";
 if (!fs.existsSync(db)) fs.mkdirSync(db);
 
 const file = (n) => require("path").join(db, n);
-const j = (f) => JSON.parse(fs.readFileSync(f, 'utf8') || '[]');
-const w = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2));
+const j = (f) => fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : [];
+const w = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2), 'utf8');
 
 const USERS = file("users.json");
 const GEN_LOG = file("gen_log.json");
 const ORDERS = file("orders.json");
 const PV = file("pv.json");
 
+// 浏览量
 app.get("/api/pv", (req, res) => {
   let c = j(PV);
   c = c.length ? c[0].count + 1 : 1;
@@ -27,48 +29,77 @@ app.get("/api/pv", (req, res) => {
   res.send("ok");
 });
 
+// 创建待付款订单
 app.post("/api/create-order", (req, res) => {
   const { username, points, payType } = req.body;
-  const orderId = Date.now() + "";
+  const orderId = Date.now().toString();
   let orders = j(ORDERS);
-  orders.push({ orderId, username, points, payType, status: "pending", createTime: new Date().toLocaleString() });
+  orders.push({
+    orderId, username, points, payType,
+    status: "pending",
+    createTime: new Date().toLocaleString(),
+    confirmTime: ""
+  });
   w(ORDERS, orders);
   res.json({ ok: true, orderId });
 });
 
+// 查询订单状态
 app.post("/api/check-order", (req, res) => {
   const { orderId } = req.body;
   const order = j(ORDERS).find(o => o.orderId === orderId);
   res.json({ ok: !!order, status: order?.status });
 });
 
+// 管理员确认订单 → 自动加积分
 app.post("/api/admin/confirm-order", (req, res) => {
   const { orderId } = req.body;
   let orders = j(ORDERS);
   let users = j(USERS);
+
   const idx = orders.findIndex(o => o.orderId === orderId);
   if (idx === -1) return res.json({ ok: false, msg: "订单不存在" });
+
   const order = orders[idx];
-  if (order.status === "success") return res.json({ ok: false, msg: "已完成" });
+  if (order.status === "success") return res.json({ ok: false, msg: "已确认过" });
 
   const userIdx = users.findIndex(u => u.username === order.username);
-  if (userIdx !== -1) { users[userIdx].score += order.points; w(USERS, users); }
+  if (userIdx !== -1) {
+    users[userIdx].score += order.points;
+    w(USERS, users);
+  }
+
   orders[idx].status = "success";
   orders[idx].confirmTime = new Date().toLocaleString();
   w(ORDERS, orders);
+
   res.json({ ok: true });
 });
 
+// 后台总数据
 app.get("/api/admin/all", (req, res) => {
   const users = j(USERS);
   const gen = j(GEN_LOG);
   const orders = j(ORDERS);
   const pv = j(PV).length ? j(PV)[0].count : 0;
+
   const totalGen = gen.length;
   const successGen = gen.filter(g => g.success).length;
-  res.json({ pv, userCount: users.length, totalGen, successGen });
+  const failGen = totalGen - successGen;
+  const genRate = totalGen === 0 ? "0%" : (successGen / totalGen * 100).toFixed(1) + "%";
+
+  const pendingOrders = orders.filter(o => o.status === "pending");
+  const successOrders = orders.filter(o => o.status === "success");
+  const totalCharge = successOrders.reduce((sum, o) => sum + o.points, 0);
+
+  res.json({
+    pv, userCount: users.length,
+    totalGen, successGen, failGen, genRate,
+    totalCharge, pendingOrders, successOrders
+  });
 });
 
+// 注册
 app.post("/api/register", (req, res) => {
   const { username, pwd } = req.body;
   let u = j(USERS);
@@ -78,43 +109,68 @@ app.post("/api/register", (req, res) => {
   res.json({ code: 0 });
 });
 
+// 登录
 app.post("/api/login", (req, res) => {
   const { username, pwd } = req.body;
   const u = j(USERS).find(x => x.username === username && x.pwd === pwd);
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// ✅ 安全版：不暴露任何Token，不触发GitHub安全扫描
+// ✅ 读取环境变量的AI卡通生成
 app.post("/api/ai-generate", async (req, res) => {
   try {
     const { username, image } = req.body;
-    let users = j(USERS);
-    let user = users.find(x => x.username === username);
+    const users = j(USERS);
+    const user = users.find(x => x.username === username);
 
     if (!user || user.score < 1) {
       return res.json({ ok: false, msg: "积分不足" });
     }
 
+    const base64Raw = image.replace(/^data:image\/\w+;base64,/, "");
+    const token = process.env.HUGGINGFACE_TOKEN;
+
+    if (!token) {
+      return res.json({ ok: false, msg: "服务器配置错误：缺少HuggingFace Token" });
+    }
+
+    // 调用卡通模型
+    const response = await axios.post(
+      "https://api-inference.huggingface.co/models/akhileshkv0/Photo-to-cartoon",
+      { inputs: base64Raw },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "arraybuffer",
+        timeout: 60000
+      }
+    );
+
+    const cartoonBase64 = "data:image/png;base64," + Buffer.from(response.data).toString("base64");
+
     // 扣积分
     user.score -= 1;
     w(USERS, users);
 
-    let log = j(GEN_LOG);
+    // 记录日志
+    const log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: true });
     w(GEN_LOG, log);
 
-    // 直接返回，前端自动生成卡通效果（安全、稳定、无密钥）
     return res.json({
       ok: true,
       score: user.score,
-      cartoon: image
+      cartoon: cartoonBase64
     });
 
-  } catch (e) {
-    return res.json({ ok: false, msg: "生成失败" });
+  } catch (err) {
+    console.error("生成错误：", err);
+    const log = j(GEN_LOG);
+    log.push({ username: req.body.username, time: new Date().toLocaleString(), success: false });
+    w(GEN_LOG, log);
+    return res.json({ ok: false, msg: "生成失败，请稍后重试" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log("✅ 安全版服务已启动 — 无密钥泄露风险");
+  console.log("✅ 服务器启动成功，已读取HuggingFace Token");
 });
