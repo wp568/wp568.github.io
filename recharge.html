@@ -18,7 +18,7 @@
   <a href="index.html" class="block text-center text-green-600">返回首页</a>
 </div>
 <script>
-const API_BASE = "https://ai-api-fxbs.onrender.com";
+const API_BASE = "https://wp568-github-io.onrender.com";
 let user;
 try{
   user = JSON.parse(localStorage.getItem('aiUser'));
@@ -40,7 +40,7 @@ document.querySelectorAll('.recharge-item').forEach(btn=>{
       localStorage.setItem('aiUser',JSON.stringify({...user,score:data.score}));
       location.reload();
     }catch(e){
-      alert('网络错误');
+      alert('网络故障');
     }
   };
 });
