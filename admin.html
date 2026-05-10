@@ -2,99 +2,133 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>积分充值</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .box { background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+    .title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #1f2937; }
+    .item { padding: 8px 0; border-bottom: 1px solid #eee; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background-color: #f3f4f6; }
+  </style>
 </head>
-<body class="max-w-md mx-auto p-4">
-  <h1 class="text-xl font-bold mb-4">积分充值</h1><!-- 充值统计（只算已到账） -->
-<div class="mt-6 p-4 bg-white rounded shadow">
-  <h2 class="text-lg font-bold mb-2">充值统计（有效）</h2>
-  <p>总充值金额：<span id="totalCharge">0</span> 元</p>
-  <p>待付款订单：<span id="pendingCount">0</span> 笔</p>
-  <p>已到账订单：<span id="successCount">0</span> 笔</p>
-</div>
+<body class="bg-gray-100 p-4">
+<div class="max-w-6xl mx-auto">
 
-<!-- 待付款订单（需手动确认） -->
-<div class="mt-6 p-4 bg-white rounded shadow">
-  <h2 class="text-lg font-bold mb-2">待付款订单（用户已扫码，未到账）</h2>
-  <table class="w-full text-sm">
-    <thead>
-      <tr class="bg-gray-100">
-        <th class="p-2 text-left">订单号</th>
-        <th class="p-2 text-left">用户</th>
-        <th class="p-2 text-left">金额</th>
-        <th class="p-2 text-left">支付方式</th>
-        <th class="p-2 text-left">创建时间</th>
-        <th class="p-2 text-left">操作</th>
-      </tr>
-    </thead>
-    <tbody id="pendingList"></tbody>
-  </table>
-</div>
+  <h1 class="text-2xl font-bold mb-4">管理后台</h1>
 
-<!-- 已到账订单（统计用） -->
-<div class="mt-6 p-4 bg-white rounded shadow">
-  <h2 class="text-lg font-bold mb-2">已到账订单（有效充值）</h2>
-  <table class="w-full text-sm">
-    <thead>
-      <tr class="bg-gray-100">
-        <th class="p-2 text-left">订单号</th>
-        <th class="p-2 text-left">用户</th>
-        <th class="p-2 text-left">金额</th>
-        <th class="p-2 text-left">支付方式</th>
-        <th class="p-2 text-left">到账时间</th>
-      </tr>
-    </thead>
-    <tbody id="successList"></tbody>
-  </table>
+  <!-- 网站总览 -->
+  <div class="box">
+    <div class="title">网站总览</div>
+    <p>浏览次数：<span id="pv" class="font-bold text-green-600">0</span></p>
+    <p>总用户数：<span id="uc" class="font-bold">0</span></p>
+    <p>总生成次数：<span id="gt" class="font-bold">0</span></p>
+    <p>成功次数：<span id="gs" class="font-bold text-green-600">0</span></p>
+    <p>失败次数：<span id="gf" class="font-bold text-red-600">0</span></p>
+    <p>成功率：<span id="gr" class="font-bold text-blue-600">0%</span></p>
+    <p>有效充值总额：<span id="totalCharge" class="font-bold text-green-600">0</span> 积分</p>
+    <p>待付款订单：<span id="pendingCount" class="font-bold">0</span> 笔</p>
+    <p>已到账订单：<span id="successCount" class="font-bold">0</span> 笔</p>
+  </div>
+
+  <!-- 待付款订单 -->
+  <div class="box">
+    <div class="title">待付款订单（需手动确认）</div>
+    <table>
+      <thead>
+        <tr>
+          <th>订单号</th>
+          <th>用户</th>
+          <th>金额</th>
+          <th>支付方式</th>
+          <th>创建时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="pendingList"></tbody>
+    </table>
+  </div>
+
+  <!-- 已到账订单 -->
+  <div class="box">
+    <div class="title">已到账订单（有效充值）</div>
+    <table>
+      <thead>
+        <tr>
+          <th>订单号</th>
+          <th>用户</th>
+          <th>金额</th>
+          <th>支付方式</th>
+          <th>到账时间</th>
+        </tr>
+      </thead>
+      <tbody id="successList"></tbody>
+    </table>
+  </div>
+
+  <!-- 手动加积分 -->
+  <div class="box">
+    <div class="title">手动给用户加积分</div>
+    <input id="uname" class="border p-2 w-full mb-2" placeholder="用户名">
+    <input id="upoints" type="number" class="border p-2 w-full mb-2" placeholder="加多少积分">
+    <button onclick="add()" class="bg-green-600 text-white p-2 w-full rounded">确认添加</button>
+    <p id="msg" class="mt-2 text-center"></p>
+  </div>
+
+  <a href="index.html" class="inline-block mt-4 text-green-600">← 返回首页</a>
 </div>
 
 <script>
-// 在你原来的 loadData 函数里，把充值部分替换成：
-function loadData() {
-  fetch(API + "/api/admin/all")
-    .then(res => res.json())
-    .then(data => {
-      // ... 你原来的浏览量、生成统计代码 ...
+const API = "https://wp568-github-io.onrender.com";
 
-      // 充值统计
-      document.getElementById("totalCharge").innerText = data.totalCharge;
-      document.getElementById("pendingCount").innerText = data.pendingOrders.length;
-      document.getElementById("successCount").innerText = data.successOrders.length;
+async function loadData() {
+  const r = await fetch(API + "/api/admin/all");
+  const d = await r.json();
 
-      // 待付款列表
-      let pendingHtml = "";
-      data.pendingOrders.forEach(o => {
-        pendingHtml += `
-          <tr>
-            <td class="p-2">${o.orderId}</td>
-            <td class="p-2">${o.username}</td>
-            <td class="p-2">${o.points}</td>
-            <td class="p-2">${o.payType === 1 ? "微信" : "支付宝"}</td>
-            <td class="p-2">${o.createTime}</td>
-            <td class="p-2">
-              <button onclick="confirmOrder('${o.orderId}')" class="bg-green-500 text-white p-1 rounded">确认到账</button>
-            </td>
-          </tr>
-        `;
-      });
-      document.getElementById("pendingList").innerHTML = pendingHtml;
+  document.getElementById("pv").innerText = d.pv || 0;
+  document.getElementById("uc").innerText = d.userCount || 0;
+  document.getElementById("gt").innerText = d.totalGen || 0;
+  document.getElementById("gs").innerText = d.successGen || 0;
+  document.getElementById("gf").innerText = d.failGen || 0;
+  document.getElementById("gr").innerText = d.genRate || "0%";
+  document.getElementById("totalCharge").innerText = d.totalCharge || 0;
+  document.getElementById("pendingCount").innerText = d.pendingOrders.length;
+  document.getElementById("successCount").innerText = d.successOrders.length;
 
-      // 已到账列表
-      let successHtml = "";
-      data.successOrders.forEach(o => {
-        successHtml += `
-          <tr>
-            <td class="p-2">${o.orderId}</td>
-            <td class="p-2">${o.username}</td>
-            <td class="p-2">${o.points}</td>
-            <td class="p-2">${o.payType === 1 ? "微信" : "支付宝"}</td>
-            <td class="p-2">${o.confirmTime}</td>
-          </tr>
-        `;
-      });
-      document.getElementById("successList").innerHTML = successHtml;
-    });
+  // 待付款列表
+  let pendingHtml = "";
+  d.pendingOrders.forEach(o => {
+    pendingHtml += `
+      <tr>
+        <td>${o.orderId}</td>
+        <td>${o.username}</td>
+        <td>${o.points}</td>
+        <td>${o.payType === 1 ? "微信" : "支付宝"}</td>
+        <td>${o.createTime}</td>
+        <td>
+          <button onclick="confirmOrder('${o.orderId}')" class="bg-green-500 text-white p-1 rounded text-sm">确认到账</button>
+        </td>
+      </tr>
+    `;
+  });
+  document.getElementById("pendingList").innerHTML = pendingHtml;
+
+  // 已到账列表
+  let successHtml = "";
+  d.successOrders.forEach(o => {
+    successHtml += `
+      <tr>
+        <td>${o.orderId}</td>
+        <td>${o.username}</td>
+        <td>${o.points}</td>
+        <td>${o.payType === 1 ? "微信" : "支付宝"}</td>
+        <td>${o.confirmTime}</td>
+      </tr>
+    `;
+  });
+  document.getElementById("successList").innerHTML = successHtml;
 }
 
 // 管理员确认到账
@@ -111,68 +145,22 @@ function confirmOrder(orderId) {
   });
 }
 
+// 手动加积分
+async function add() {
+  const u = document.getElementById("uname").value;
+  const p = document.getElementById("upoints").value;
+  const res = await fetch(API + "/api/admin/add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: u, points: parseInt(p) })
+  });
+  const d = await res.json();
+  document.getElementById("msg").innerText = d.ok ? "✅ 成功！积分：" + d.score : "❌ 失败：" + d.msg;
+}
+
 // 页面加载时自动刷新
 setInterval(loadData, 5000);
 loadData();
 </script>
-
-
-  <select id="payType" class="border p-2 w-full mb-4">
-    <option value="1">微信支付</option>
-    <option value="2">支付宝支付</option>
-  </select>
-
-  <button onclick="pay(10)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">10元 → 10积分</button>
-  <button onclick="pay(50)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">50元 → 50积分</button>
-  <button onclick="pay(100)" class="bg-blue-500 text-white p-2 w-full rounded mb-2">100元 → 100积分</button>
-
-  <div id="qrcode" class="mt-4 text-center"></div>
-  <div id="status" class="mt-2 text-sm text-gray-600"></div>
-
-  <script>
-    const user = JSON.parse(localStorage.getItem("aiUser"));
-    const API = "https://wp568-github-io.onrender.com";
-    let currentOrderId = "";
-    let timer = null;
-
-    // 轮询订单状态
-    async function checkStatus() {
-      const res = await fetch(API + "/api/check-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: currentOrderId })
-      });
-      const data = await res.json();
-      if (data.status === "success") {
-        status.innerHTML = "<span class='text-green-600'>✅ 支付成功！积分已到账</span>";
-        clearInterval(timer);
-      } else {
-        status.innerHTML = "<span class='text-orange-500'>⌛ 等待付款中...</span>";
-      }
-    }
-
-    async function pay(points) {
-      const t = document.getElementById("payType").value;
-      // 1. 创建待付款订单
-      const res = await fetch(API + "/api/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: user.username, points, payType: parseInt(t) })
-      });
-      const data = await res.json();
-      if (!data.ok) return alert("创建订单失败");
-
-      currentOrderId = data.orderId;
-      // 2. 显示二维码
-      if (t == 1) {
-        qrcode.innerHTML = `<h3>微信支付</h3><img src="/qrcode-wechat.png" width="300"><p>订单号：${currentOrderId}</p>`;
-      } else {
-        qrcode.innerHTML = `<h3>支付宝支付</h3><img src="/qrcode-alipay.png" width="300"><p>订单号：${currentOrderId}</p>`;
-      }
-      // 3. 每3秒查一次状态
-      clearInterval(timer);
-      timer = setInterval(checkStatus, 3000);
-    }
-  </script>
 </body>
 </html>
