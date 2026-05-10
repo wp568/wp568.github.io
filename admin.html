@@ -5,79 +5,88 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理后台</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .box { background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+    .title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #1f2937; }
+    .item { padding: 8px 0; border-bottom: 1px solid #eee; }
+  </style>
 </head>
-<body class="bg-gray-100 p-6">
-<div class="max-w-5xl mx-auto bg-white rounded-xl p-6 shadow-lg">
-  <h2 class="text-2xl font-bold mb-6">网站数据统计 & 手动加积分</h2>
-  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">总用户数</p><p id="userCount" class="text-xl font-bold">0</p></div>
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">总生成次数</p><p id="totalGen" class="text-xl font-bold">0</p></div>
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">成功次数</p><p id="succGen" class="text-xl font-bold text-green-600">0</p></div>
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">失败次数</p><p id="failGen" class="text-xl font-bold text-red-600">0</p></div>
-    <div class="border p-4 text-center rounded-lg"><p class="text-gray-500">成功率</p><p id="rate" class="text-xl font-bold">0%</p></div>
+<body class="bg-gray-100 p-4">
+<div class="max-w-6xl mx-auto">
+
+  <h1 class="text-2xl font-bold mb-4">管理后台</h1>
+
+  <!-- 总览 -->
+  <div class="box">
+    <div class="title">网站总览</div>
+    <p>浏览次数：<span id="pv" class="font-bold text-green-600">0</span></p>
+    <p>总用户数：<span id="uc" class="font-bold">0</span></p>
+    <p>总生成次数：<span id="gt" class="font-bold">0</span></p>
+    <p>成功次数：<span id="gs" class="font-bold text-green-600">0</span></p>
+    <p>失败次数：<span id="gf" class="font-bold text-red-600">0</span></p>
+    <p>成功率：<span id="gr" class="font-bold text-blue-600">0%</span></p>
   </div>
 
-  <hr class="my-6">
-  <h3 class="text-xl font-bold mb-4">手动给用户充值加积分</h3>
-  <div class="max-w-md mx-auto">
-    <input id="addUser" placeholder="输入用户名" class="w-full border rounded-lg p-3 mb-3">
-    <input id="addNum" type="number" placeholder="输入增加积分数量" class="w-full border rounded-lg p-3 mb-3">
-    <button onclick="addScore()" class="w-full bg-green-600 text-white p-3 rounded-lg">确认添加</button>
-    <p id="msg" class="mt-3 text-center"></p>
+  <!-- 生成记录 -->
+  <div class="box">
+    <div class="title">用户生成记录</div>
+    <div id="glist"></div>
   </div>
 
-  <a href="index.html" class="inline-block mt-6 text-green-600">← 返回首页</a>
+  <!-- 充值记录 -->
+  <div class="box">
+    <div class="title">充值记录（微信/支付宝）</div>
+    <div id="rlist"></div>
+  </div>
+
+  <!-- 手动加积分 -->
+  <div class="box">
+    <div class="title">手动给用户加积分</div>
+    <input id="uname" class="border p-2 w-full mb-2" placeholder="用户名">
+    <input id="upoints" type="number" class="border p-2 w-full mb-2" placeholder="加多少积分">
+    <button onclick="add()" class="bg-green-600 text-white p-2 w-full rounded">确认添加</button>
+    <p id="msg" class="mt-2 text-center"></p>
+  </div>
+
+  <a href="index.html" class="inline-block mt-4 text-green-600">← 返回首页</a>
 </div>
+
 <script>
-const API_BASE = "https://wp568-github-io.onrender.com";
-let user;
-try{
-  user = JSON.parse(localStorage.getItem('aiUser'));
-}catch(e){
-  alert('请先登录'); location.href='login.html';
-}
-if(!user || !user.isAdmin){ alert('无管理员权限'); location.href='index.html'; }
+const API = "https://wp568-github-io.onrender.com";
 
-async function loadStats(){
-  try{
-    const res = await fetch(`${API_BASE}/api/admin-stats`);
-    const data = await res.json();
-    document.getElementById('userCount').innerText = data.userCount;
-    document.getElementById('totalGen').innerText = data.totalGenerate;
-    document.getElementById('succGen').innerText = data.successNum;
-    document.getElementById('failNum').innerText = data.failNum;
-    document.getElementById('rate').innerText = data.successRate;
-  }catch(e){}
-}
-loadStats();
+async function load() {
+  const r = await fetch(API + "/api/admin/all");
+  const d = await r.json();
 
-// 手动加积分
-async function addScore(){
-  let username = document.getElementById('addUser').value.trim();
-  let num = parseInt(document.getElementById('addNum').value);
-  if(!username || !num || num<=0){
-    document.getElementById('msg').innerText="请填写正确用户名和积分";
-    document.getElementById('msg').className="text-red-500";
-    return;
-  }
-  try{
-    let res = await fetch(`${API_BASE}/api/admin/addscore`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({username,num})
-    });
-    let d = await res.json();
-    if(d.ok){
-      document.getElementById('msg').innerText="添加成功！用户当前积分："+d.score;
-      document.getElementById('msg').className="text-green-500";
-    }else{
-      document.getElementById('msg').innerText=d.msg;
-      document.getElementById('msg').className="text-red-500";
-    }
-  }catch(e){
-    document.getElementById('msg').innerText="网络错误，请稍后重试";
-    document.getElementById('msg').className="text-red-500";
-  }
+  document.getElementById("pv").innerText = d.pv || 0;
+  document.getElementById("uc").innerText = d.userCount || 0;
+  document.getElementById("gt").innerText = d.totalGen || 0;
+  document.getElementById("gs").innerText = d.successGen || 0;
+  document.getElementById("gf").innerText = d.failGen || 0;
+  document.getElementById("gr").innerText = d.genRate || "0%";
+
+  const gl = document.getElementById("glist");
+  d.genLogs.forEach(g => {
+    gl.innerHTML += `<div class="item">${g.time} | ${g.username} | ${g.style} | ${g.success?"✅成功":"❌失败"}</div>`;
+  });
+
+  const rl = document.getElementById("rlist");
+  d.chargeLogs.forEach(c => {
+    rl.innerHTML += `<div class="item">${c.time} | ${c.username} | +${c.points}积分 | ${c.payType==1?"微信":"支付宝"}</div>`;
+  });
+}
+load();
+
+async function add() {
+  const u = document.getElementById("uname").value;
+  const p = document.getElementById("upoints").value;
+  const res = await fetch(API + "/api/admin/add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: u, points: parseInt(p) })
+  });
+  const d = await res.json();
+  document.getElementById("msg").innerText = d.ok ? "✅ 成功！积分：" + d.score : "❌ 失败：" + d.msg;
 }
 </script>
 </body>
