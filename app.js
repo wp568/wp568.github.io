@@ -17,9 +17,10 @@ const w = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2));
 
 const USERS = file("users.json");
 const GEN_LOG = file("gen_log.json");
-const CHARGE_LOG = file("charge_log.json");
+const ORDERS = file("orders.json"); // 订单表（替代原charge_log）
 const PV = file("pv.json");
 
+// 浏览量
 app.get("/api/pv", (req, res) => {
   let c = j(PV);
   c = c.length ? c[0].count + 1 : 1;
@@ -27,16 +28,73 @@ app.get("/api/pv", (req, res) => {
   res.send("ok");
 });
 
+// 1. 创建待付款订单（点按钮时调用，不加分）
+app.post("/api/create-order", (req, res) => {
+  const { username, points, payType } = req.body;
+  const orderId = Date.now().toString(); // 唯一订单号
+  let orders = j(ORDERS);
+  orders.push({
+    orderId,
+    username,
+    points,
+    payType,
+    status: "pending", // pending/success
+    createTime: new Date().toLocaleString(),
+    confirmTime: ""
+  });
+  w(ORDERS, orders);
+  res.json({ ok: true, orderId });
+});
+
+// 2. 查询订单状态（前端轮询）
+app.post("/api/check-order", (req, res) => {
+  const { orderId } = req.body;
+  const orders = j(ORDERS);
+  const order = orders.find(o => o.orderId === orderId);
+  res.json({ ok: !!order, status: order?.status });
+});
+
+// 3. 管理员确认到账（改success、加分）
+app.post("/api/admin/confirm-order", (req, res) => {
+  const { orderId } = req.body;
+  let orders = j(ORDERS);
+  let users = j(USERS);
+  const idx = orders.findIndex(o => o.orderId === orderId);
+  if (idx === -1) return res.json({ ok: false, msg: "订单不存在" });
+
+  const order = orders[idx];
+  if (order.status === "success") return res.json({ ok: false, msg: "已确认过" });
+
+  // 更新订单状态
+  orders[idx].status = "success";
+  orders[idx].confirmTime = new Date().toLocaleString();
+  w(ORDERS, orders);
+
+  // 加积分
+  const user = users.find(u => u.username === order.username);
+  if (user) {
+    user.score += order.points;
+    w(USERS, users);
+  }
+
+  res.json({ ok: true });
+});
+
+// 4. 后台总数据（只统计success订单）
 app.get("/api/admin/all", (req, res) => {
   const users = j(USERS);
   const gen = j(GEN_LOG);
-  const charge = j(CHARGE_LOG);
+  const orders = j(ORDERS);
   const pv = j(PV).length ? j(PV)[0].count : 0;
 
   const totalGen = gen.length;
   const successGen = gen.filter(g => g.success).length;
   const failGen = totalGen - successGen;
   const genRate = totalGen === 0 ? "0%" : (successGen / totalGen * 100).toFixed(1) + "%";
+
+  const pendingOrders = orders.filter(o => o.status === "pending");
+  const successOrders = orders.filter(o => o.status === "success");
+  const totalCharge = successOrders.reduce((sum, o) => sum + o.points, 0);
 
   res.json({
     pv,
@@ -45,11 +103,13 @@ app.get("/api/admin/all", (req, res) => {
     successGen,
     failGen,
     genRate,
-    genLogs: gen.slice(-30),
-    chargeLogs: charge.slice(-30)
+    totalCharge, // 有效充值总额
+    pendingOrders, // 待付款列表
+    successOrders  // 已到账列表（统计用）
   });
 });
 
+// 注册/登录（不变）
 app.post("/api/register", (req, res) => {
   const { username, pwd } = req.body;
   let u = j(USERS);
@@ -65,25 +125,7 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-app.post("/api/charge", (req, res) => {
-  const { username, points, payType } = req.body;
-  let cl = j(CHARGE_LOG);
-  cl.push({ username, points, payType, time: new Date().toLocaleString() });
-  w(CHARGE_LOG, cl);
-  res.json({ ok: true });
-});
-
-app.post("/api/admin/add", (req, res) => {
-  const { username, points } = req.body;
-  let u = j(USERS);
-  let user = u.find(x => x.username === username);
-  if (!user) return res.json({ ok: false, msg: "用户不存在" });
-  user.score += points;
-  w(USERS, u);
-  res.json({ ok: true, score: user.score });
-});
-
-// AI 卡通生成（方案A，免费接口，100%成功）
+// AI生成（不变）
 app.post("/api/ai-generate", async (req, res) => {
   const { username, image } = req.body;
   let users = j(USERS);
