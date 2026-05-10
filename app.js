@@ -1,12 +1,16 @@
 const express = require('express');
 const fs = require('fs');
 const cors = require('cors');
+const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(__dirname));
+
+// 👉 已替换为免费、稳定的AI卡通画风API
+const CARTOON_API_URL = "https://api.liumingye.cn/api/img2cartoon";
 
 const db = __dirname + "/db";
 if (!fs.existsSync(db)) fs.mkdirSync(db);
@@ -115,42 +119,59 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// 核心：本地不依赖任何外网接口
+// ====================== ✅ 真实AI卡通画风生成 ======================
 app.post("/api/ai-generate", async (req, res) => {
   const { username, image } = req.body;
   let users = j(USERS);
   let user = users.find(x => x.username === username);
 
-  // 积分校验
+  // 积分检查
   if (!user || user.score < 1) {
     return res.json({ ok: false, msg: "积分不足" });
   }
 
-  // 扣积分
-  user.score -= 1;
-  w(USERS, users);
-
   try {
-    // 本地直接返回原图模拟生成，不请求任何第三方
+    // 调用AI卡通化API
+    const response = await axios.post(
+      CARTOON_API_URL,
+      { image: image }, // 直接发送base64图片
+      { timeout: 30000 } // 30秒超时
+    );
+
+    // 检查API返回结果
+    if (!response.data || !response.data.data) {
+      throw new Error("AI未生成图片");
+    }
+
+    // 生成成功，扣除积分
+    user.score -= 1;
+    w(USERS, users);
+
+    // 记录成功日志
     let log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: true });
     w(GEN_LOG, log);
 
-    // 直接回传图片，前端不再报错、不再转圈失败
+    // 返回卡通图片
     return res.json({
       ok: true,
       score: user.score,
-      cartoon: image
+      cartoon: response.data.data // 返回AI生成的卡通图base64
     });
 
-  } catch (err) {
+  } catch (error) {
+    console.error("AI生成失败:", error.message);
+
+    // 记录失败日志
     let log = j(GEN_LOG);
     log.push({ username, time: new Date().toLocaleString(), success: false });
     w(GEN_LOG, log);
-    return res.json({ ok: false, msg: "生成失败" });
+
+    // 返回失败信息
+    return res.json({ ok: false, msg: "生成失败，请稍后重试" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log("服务器启动成功");
+  console.log(`服务器启动成功，端口：${PORT}`);
 });
