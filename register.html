@@ -15,7 +15,7 @@
   <p class="text-center mt-4">已有账号？<a href="login.html" class="text-green-600">去登录</a></p>
 </div>
 <script>
-const API_BASE = "https://ai-api-fxbs.onrender.com";
+const API_BASE = "https://wp568-github-io.onrender.com";
 document.getElementById('regBtn').onclick = async ()=>{
   const username = document.getElementById('username').value.trim();
   const pwd = document.getElementById('pwd').value.trim();
@@ -30,7 +30,7 @@ document.getElementById('regBtn').onclick = async ()=>{
     alert('注册成功！赠送10积分');
     location.href='login.html';
   }catch(e){
-    alert('网络错误，请重试');
+    alert('网络故障，请稍后重试');
   }
 };
 </script>
