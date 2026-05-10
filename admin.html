@@ -19,7 +19,7 @@
   <a href="index.html" class="text-green-600">返回首页</a>
 </div>
 <script>
-const API_BASE = "https://ai-api-fxbs.onrender.com";
+const API_BASE = "https://wp568-github-io.onrender.com";
 let user;
 try{
   user = JSON.parse(localStorage.getItem('aiUser'));
@@ -35,7 +35,7 @@ async function loadStats(){
     document.getElementById('userCount').innerText = data.userCount;
     document.getElementById('totalGen').innerText = data.totalGenerate;
     document.getElementById('succGen').innerText = data.successNum;
-    document.getElementById('failGen').innerText = data.failGen;
+    document.getElementById('failGen').innerText = data.failNum;
     document.getElementById('rate').innerText = data.successRate;
   }catch(e){
     alert("加载失败");
