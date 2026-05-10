@@ -1,49 +1,57 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>积分充值</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>积分充值（真实转账）</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; text-align: center; }
+  .charge-btn { padding: 15px 30px; font-size: 18px; margin: 10px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+  #qr-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); padding-top: 100px; }
+  .qr-box { background: white; padding: 30px; display: inline-block; border-radius: 10px; }
+  .qr-box img { width: 200px; margin: 10px; }
+  .close-btn { margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; }
+</style>
 </head>
-<body class="bg-gray-100 min-h-screen p-8">
-<div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg">
-  <h2 class="text-2xl font-bold text-center mb-6">积分充值</h2>
-  <p class="mb-4">当前积分：<span id="myScore">0</span></p>
-  <div class="grid grid-cols-3 gap-3 mb-6">
-    <button class="recharge-item border p-4 rounded-lg hover:bg-green-100" data-num="10">10积分</button>
-    <button class="recharge-item border p-4 rounded-lg hover:bg-green-100" data-num="50">50积分</button>
-    <button class="recharge-item border p-4 rounded-lg hover:bg-green-100" data-num="100">100积分</button>
-  </div>
-  <a href="index.html" class="block text-center text-green-600">返回首页</a>
+<body>
+<h1>积分充值（真实转账，联系管理员到账）</h1>
+<p>当前你的积分：<span id="user-points">0</span></p>
+
+<div>
+  <button class="charge-btn" onclick="showQr(10)">10积分（10元）</button>
+  <button class="charge-btn" onclick="showQr(50)">50积分（50元）</button>
+  <button class="charge-btn" onclick="showQr(100)">100积分（100元）</button>
 </div>
+
+<!-- 二维码弹窗 -->
+<div id="qr-modal">
+  <div class="qr-box">
+    <h3>请转账 <span id="pay-amount">0</span> 元</h3>
+    <p>微信收款码：</p>
+    <img src="/qrcode-wechat.png" alt="微信收款码">
+    <p>支付宝收款码：</p>
+    <img src="/qrcode-alipay.png" alt="支付宝收款码">
+    <p>转账后，发送“用户名+转账金额”给管理员手动加积分</p>
+    <button class="close-btn" onclick="closeQr()">关闭</button>
+  </div>
+</div>
+
 <script>
-const API_BASE = "https://wp568-github-io.onrender.com";
-let user;
-try{
-  user = JSON.parse(localStorage.getItem('aiUser'));
-}catch(e){
-  location.href='login.html';
+// 从后端获取当前用户积分（需登录）
+async function loadPoints() {
+  const res = await fetch('/api/user-points');
+  const data = await res.json();
+  document.getElementById('user-points').innerText = data.points || 0;
 }
-if(!user) location.href='login.html';
-document.getElementById('myScore').innerText = user.score;
-document.querySelectorAll('.recharge-item').forEach(btn=>{
-  btn.onclick = async ()=>{
-    const num = btn.dataset.num;
-    try{
-      const res = await fetch(`${API_BASE}/api/recharge`,{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({username:user.username, num})
-      });
-      const data = await res.json();
-      alert('充值成功！');
-      localStorage.setItem('aiUser',JSON.stringify({...user,score:data.score}));
-      location.reload();
-    }catch(e){
-      alert('网络故障');
-    }
-  };
-});
+loadPoints();
+
+function showQr(amount) {
+  document.getElementById('pay-amount').innerText = amount;
+  document.getElementById('qr-modal').style.display = 'block';
+}
+function closeQr() {
+  document.getElementById('qr-modal').style.display = 'none';
+}
 </script>
 </body>
 </html>
