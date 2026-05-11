@@ -105,7 +105,6 @@ const SIZE = 256;
   }
 })();
 
-// 图片预处理
 async function preprocess(base64) {
   const b64 = base64.replace(/^data:image\/\w+;base64,/, "");
   const buf = Buffer.from(b64, "base64");
@@ -115,7 +114,6 @@ async function preprocess(base64) {
   return new ort.Tensor("float32", data, [1, 3, SIZE, SIZE]);
 }
 
-// 后处理
 async function postprocess(tensor) {
   const data = tensor.data;
   const buf = Buffer.alloc(SIZE * SIZE * 3);
