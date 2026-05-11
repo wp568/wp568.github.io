@@ -91,17 +91,17 @@ app.post("/api/login", (req, res) => {
   res.json(u ? { code: 0, ...u } : { code: -1 });
 });
 
-// ================== 🔥 真正 AnimeGANv3 模型 ==================
-const MODEL_PATH = path.join(__dirname, "models", "AnimeGANv3.onnx");
+// ================== 🔥 你的真实模型已配置 ==================
+const MODEL_PATH = path.join(__dirname, "models", "AnimeGANv3_Hayao_36.onnx");
 let session = null;
 const SIZE = 256;
 
 (async function loadModel() {
   try {
     session = await ort.InferenceSession.create(MODEL_PATH, { executionProviders: ["cpu"] });
-    console.log("✅ 模型加载成功");
+    console.log("✅ AnimeGANv3 模型加载成功！");
   } catch (e) {
-    console.error("模型加载失败", e);
+    console.error("❌ 模型加载失败", e);
   }
 })();
 
@@ -124,12 +124,12 @@ async function postprocess(tensor) {
   return await sharp(buf, { raw: { width: SIZE, height: SIZE, channels: 3 } }).png().toBuffer();
 }
 
-// ================== 🔥 真实AI生成接口 ==================
+// ================== 🔥 真实AI生成 ==================
 app.post("/api/ai-generate", async (req, res) => {
   try {
     const { username, image } = req.body;
     if (!username || !image) return res.json({ ok: false, msg: "参数错误" });
-    if (!session) return res.json({ ok: false, msg: "模型加载中" });
+    if (!session) return res.json({ ok: false, msg: "模型正在加载，请稍候重试" });
 
     let users = readJson(DB.users);
     let user = users.find(x => x.username === username);
@@ -146,11 +146,11 @@ app.post("/api/ai-generate", async (req, res) => {
     res.json({ ok: true, score: user.score, cartoon });
 
   } catch (e) {
-    console.error(e);
+    console.error("生成错误", e);
     res.json({ ok: false, msg: "生成失败" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log("✅ 服务启动：" + PORT);
+  console.log("✅ 服务启动成功，端口：" + PORT);
 });
